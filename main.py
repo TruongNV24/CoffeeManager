@@ -48,9 +48,11 @@ class CoffeeManagerApp:
 
         HeaderView(self.root, username=username, role=role, on_logout=self.show_auth)
         content_view = ContentView(self.root)
-        controller = MainController(content_view)
-        create_menu(self.root, controller)
-        content_view.show_text(f"Xin chào {username}! Chọn chức năng ở menu bên trái.")
+        controller = MainController(content_view, role=role)
+        create_menu(self.root, controller, role=role)
+        content_view.show_text(
+            f"Xin chào {username} ({role})! Chọn chức năng phù hợp với quyền của bạn ở menu bên trái."
+        )
 
 
 def main():
