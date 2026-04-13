@@ -1,3 +1,6 @@
+from Config.db import get_connection
+
+
 def get_active_order_by_table(table_id):
     conn = get_connection()
     cursor = conn.cursor()
