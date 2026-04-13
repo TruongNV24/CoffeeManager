@@ -1,4 +1,5 @@
 from Config.db import get_connection, db_cloud
+from Views.table import TableView
 
 class MainController:
     def __init__(self, content_view, role):
@@ -33,15 +34,8 @@ class MainController:
             self._deny_access()
             return
 
-        # Logic: Lấy danh sách bàn từ SQLite để hiện lên View
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM Tables")
-        tables = cursor.fetchall()
-        conn.close()
-        
-        # Truyền dữ liệu sang View (giả sử content_view có hàm update_display)
-        self.content_view.show_text(f"🪑 Quản lý bàn ({len(tables)} bàn)")
+        self.content_view.clear()
+        TableView(self.content_view.frame)
 
     def show_products(self):
         if not self._can_access("show_products"):
