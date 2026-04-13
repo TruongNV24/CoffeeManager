@@ -51,7 +51,7 @@ class CoffeeManagerApp:
         controller = MainController(content_view, role=role)
         create_menu(self.root, controller, role=role)
         content_view.show_text(
-            f"Xin chào {username} ({role})! Chọn chức năng phù hợp với quyền của bạn ở menu bên trái."
+            f"Xin chào {username} ({role})!"
         )
 
 
