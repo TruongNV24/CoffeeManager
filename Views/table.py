@@ -1,18 +1,33 @@
 import tkinter as tk
-from controllers.table import TableController
+from tkinter import messagebox
+
+from Controllers.table import TableController
 
 class TableView:
-    def __init__(self, root):
-        self.root = root
+    def __init__(self, parent):
+        self.parent = parent
         self.controller = TableController()
 
-        self.frame = tk.Frame(root)
+        self.frame = tk.Frame(parent, bg="white")
         self.frame.pack(fill="both", expand=True)
 
         self.load_tables()
 
     def load_tables(self):
         tables = self.controller.load_tables()
+
+        for widget in self.frame.winfo_children():
+            widget.destroy()
+
+        if not tables:
+            tk.Label(
+                self.frame,
+                text="Chưa có bàn nào trong hệ thống.",
+                bg="white",
+                fg="#666",
+                font=("Arial", 12),
+            ).pack(pady=40)
+            return
 
         for index, table in enumerate(tables):
             table_id = table[0]
@@ -36,6 +51,6 @@ class TableView:
         order = self.controller.open_table(table_id)
 
         if order:
-            print("Mở order hiện tại:", order)
+            messagebox.showinfo("Đặt bàn", f"Mở order hiện tại của bàn {table_id}: {order[0]}")
         else:
-            print("Tạo order mới")
+            messagebox.showinfo("Đặt bàn", f"Tạo order mới cho bàn {table_id}")
