@@ -26,6 +26,8 @@ class OrderView:
         self.selected_product_id = None
         self.current_order_id = None
         self.current_image_preview = None
+        self.card_image_cache = {}
+        self.product_cards = {}
 
         self.frame = tk.Frame(parent, bg="white")
         self.frame.pack(fill="both", expand=True)
@@ -59,9 +61,20 @@ class OrderView:
         left.pack(side="left", fill="both", expand=True, padx=(0, 8))
 
         tk.Label(left, text="Danh sách món", bg="#f8f8f8", font=("Arial", 12, "bold")).pack(anchor="w", padx=10, pady=8)
-        self.product_list = tk.Listbox(left, font=("Arial", 11), height=14)
-        self.product_list.pack(fill="both", expand=True, padx=10, pady=(0, 10))
-        self.product_list.bind("<<ListboxSelect>>", self.on_select_product)
+
+        grid_wrap = tk.Frame(left, bg="#f8f8f8")
+        grid_wrap.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+
+        self.product_canvas = tk.Canvas(grid_wrap, bg="#f8f8f8", highlightthickness=0)
+        self.product_scrollbar = tk.Scrollbar(grid_wrap, orient="vertical", command=self.product_canvas.yview)
+        self.product_canvas.configure(yscrollcommand=self.product_scrollbar.set)
+        self.product_canvas.pack(side="left", fill="both", expand=True)
+        self.product_scrollbar.pack(side="right", fill="y")
+
+        self.product_grid = tk.Frame(self.product_canvas, bg="#f8f8f8")
+        self.product_canvas_window = self.product_canvas.create_window((0, 0), window=self.product_grid, anchor="nw")
+        self.product_grid.bind("<Configure>", lambda _e: self.product_canvas.configure(scrollregion=self.product_canvas.bbox("all")))
+        self.product_canvas.bind("<Configure>", self._on_product_canvas_resize)
 
         self.product_form = tk.Frame(left, bg="#f8f8f8")
         self.product_form.pack(fill="x", padx=10, pady=(0, 10))
@@ -123,23 +136,121 @@ class OrderView:
 
     def load_products(self):
         self.products = get_all_products()
-        self.product_list.delete(0, tk.END)
-        for p in self.products:
-            image_note = "🖼️" if p[4] else "—"
-            self.product_list.insert(tk.END, f"#{p[0]} | {p[1]} | {p[2]:,.0f}đ | {p[3]} | {image_note}")
+        self.render_product_cards()
 
     def on_select_product(self, _event=None):
-        sel = self.product_list.curselection()
-        if not sel:
+        if self.selected_product_id is None:
             return
-        idx = sel[0]
-        p = self.products[idx]
-        self.selected_product_id = p[0]
-        self.product_name_var.set(p[1])
-        self.product_price_var.set(str(p[2]))
-        self.product_status_var.set(p[3])
-        self.product_image_var.set(p[4] or "")
-        self.refresh_image_preview(p[4])
+        product = next((p for p in self.products if p[0] == self.selected_product_id), None)
+        if not product:
+            return
+        self.product_name_var.set(product[1])
+        self.product_price_var.set(str(product[2]))
+        self.product_status_var.set(product[3])
+        self.product_image_var.set(product[4] or "")
+        self.refresh_image_preview(product[4])
+        self._refresh_selected_card()
+
+    def _on_product_canvas_resize(self, event):
+        self.product_canvas.itemconfig(self.product_canvas_window, width=event.width)
+
+    def render_product_cards(self):
+        for widget in self.product_grid.winfo_children():
+            widget.destroy()
+
+        self.card_image_cache = {}
+        self.product_cards = {}
+        card_width = 140
+        columns = 4
+
+        for idx, product in enumerate(self.products):
+            row = idx // columns
+            column = idx % columns
+            card = tk.Frame(
+                self.product_grid,
+                bg="white",
+                bd=1,
+                relief="solid",
+                width=card_width,
+                height=180,
+                cursor="hand2",
+                padx=8,
+                pady=8,
+            )
+            card.grid(row=row, column=column, padx=6, pady=6, sticky="n")
+            card.grid_propagate(False)
+
+            image = self._build_product_image(product[4], width=110, height=78)
+            image_label = tk.Label(card, image=image, bg="white")
+            image_label.image = image
+            image_label.pack(pady=(0, 8))
+
+            name_label = tk.Label(
+                card,
+                text=product[1],
+                bg="white",
+                font=("Arial", 10, "bold"),
+                wraplength=116,
+                justify="center",
+            )
+            name_label.pack(fill="x")
+
+            price_label = tk.Label(
+                card,
+                text=f"{product[2]:,.0f}đ",
+                bg="white",
+                fg="#1b8dd8",
+                font=("Arial", 10, "bold"),
+            )
+            price_label.pack(pady=(4, 0))
+
+            if product[3] == "Hết món":
+                sold_out = tk.Label(card, text="HẾT MÓN", bg="#fce6e6", fg="#c0392b", font=("Arial", 9, "bold"))
+                sold_out.pack(pady=(8, 0), fill="x")
+
+            self._bind_card_click(card, product[0])
+            self._bind_card_click(image_label, product[0])
+            self._bind_card_click(name_label, product[0])
+            self._bind_card_click(price_label, product[0])
+            self.product_cards[product[0]] = card
+
+        self._refresh_selected_card()
+        self.product_canvas.configure(scrollregion=self.product_canvas.bbox("all"))
+
+    def _bind_card_click(self, widget, product_id):
+        widget.bind("<Button-1>", lambda _e, pid=product_id: self.select_product_by_id(pid))
+
+    def select_product_by_id(self, product_id):
+        self.selected_product_id = product_id
+        self.on_select_product()
+
+    def _refresh_selected_card(self):
+        for pid, card in self.product_cards.items():
+            if pid == self.selected_product_id:
+                card.configure(bg="#e9f4ff", bd=2, relief="solid")
+            else:
+                card.configure(bg="white", bd=1, relief="solid")
+
+    def _build_product_image(self, image_path, width=110, height=78):
+        cache_key = f"{image_path}|{width}x{height}"
+        if cache_key in self.card_image_cache:
+            return self.card_image_cache[cache_key]
+
+        image = None
+        if image_path and os.path.exists(image_path):
+            try:
+                image = tk.PhotoImage(file=image_path)
+            except tk.TclError:
+                image = None
+
+        if image:
+            image = image.subsample(max(1, image.width() // width), max(1, image.height() // height))
+        else:
+            image = tk.PhotoImage(width=width, height=height)
+            image.put("#d9d9d9", to=(0, 0, width, height))
+
+        self.card_image_cache[cache_key] = image
+        return image
 
     def _selected_table_id(self):
         raw = self.table_var.get().strip()
