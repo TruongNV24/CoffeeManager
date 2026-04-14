@@ -84,9 +84,16 @@ def create_tables():
         CategoryID INTEGER,
         Price REAL NOT NULL,
         Status TEXT DEFAULT 'Còn bán',
+        ProductImage TEXT,
         IsSynced INTEGER DEFAULT 0,
         FOREIGN KEY (CategoryID) REFERENCES Categories(CategoryID)
     )""")
+
+    # Migration cho DB cũ chưa có cột ProductImage
+    cursor.execute("PRAGMA table_info(Products)")
+    product_columns = [col[1] for col in cursor.fetchall()]
+    if "ProductImage" not in product_columns:
+        cursor.execute("ALTER TABLE Products ADD COLUMN ProductImage TEXT")
 
     # 7. Orders (QUAN TRỌNG: Cần đồng bộ để chủ quán xem doanh thu)
     cursor.execute("""
