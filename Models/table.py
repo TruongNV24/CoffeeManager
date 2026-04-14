@@ -1,5 +1,6 @@
 from Config.db import get_connection
 
+
 def get_all_tables():
     conn = get_connection()
     cursor = conn.cursor()
@@ -28,6 +29,17 @@ def update_table(table_id, table_name, status):
     cursor.execute(
         "UPDATE Tables SET TableName = ?, Status = ? WHERE TableID = ?",
         (table_name, status, table_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def update_table_status(table_id, status):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE Tables SET Status = ? WHERE TableID = ?",
+        (status, table_id),
     )
     conn.commit()
     conn.close()

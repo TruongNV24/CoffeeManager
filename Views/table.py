@@ -5,8 +5,9 @@ from Controllers.table import TableController
 
 
 class TableView:
-    def __init__(self, parent):
+    def __init__(self, parent, role):
         self.parent = parent
+        self.role = role
         self.controller = TableController()
         self.selected_table_id = None
 
@@ -38,22 +39,30 @@ class TableView:
         action_frame = tk.Frame(form_frame, bg="white")
         action_frame.grid(row=0, column=4, padx=(24, 0))
 
-        tk.Button(
+        self.btn_add = tk.Button(
             action_frame, text="Thêm", bg="#2ecc71", fg="white", command=self.add_table
-        ).pack(side="left", padx=4)
-        tk.Button(
+        )
+        self.btn_add.pack(side="left", padx=4)
+        self.btn_update = tk.Button(
             action_frame,
             text="Cập nhật",
             bg="#3498db",
             fg="white",
             command=self.update_table,
-        ).pack(side="left", padx=4)
-        tk.Button(
+        )
+        self.btn_update.pack(side="left", padx=4)
+        self.btn_delete = tk.Button(
             action_frame, text="Xóa", bg="#e74c3c", fg="white", command=self.delete_table
-        ).pack(side="left", padx=4)
+        )
+        self.btn_delete.pack(side="left", padx=4)
         tk.Button(action_frame, text="Làm mới", command=self.reset_form).pack(
             side="left", padx=4
         )
+
+        if self.role == "Staff":
+            self.name_entry.config(state="disabled")
+            self.btn_add.config(state="disabled")
+            self.btn_delete.config(state="disabled")
 
         self.list_frame = tk.Frame(self.frame, bg="white")
         self.list_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
@@ -74,9 +83,13 @@ class TableView:
             ).pack(pady=40)
             return
 
+        header_text = "Danh sách bàn (nhấn để chọn):"
+        if self.role == "Staff":
+            header_text += " Staff chỉ được đổi trạng thái."
+
         tk.Label(
             self.list_frame,
-            text="Danh sách bàn (nhấn để chọn):",
+            text=header_text,
             bg="white",
             font=("Arial", 12, "bold"),
         ).pack(anchor="w", pady=(5, 12))
@@ -85,10 +98,8 @@ class TableView:
         grid_frame.pack(fill="both", expand=True)
 
         for index, table in enumerate(tables):
-            table_id = table[0]
             name = table[1]
             status = table[2]
-
             color = "green" if status == "Trống" else "red"
 
             btn = tk.Button(
@@ -105,17 +116,12 @@ class TableView:
     def select_table(self, table):
         table_id, name, status = table
         self.selected_table_id = table_id
+        self.name_entry.config(state="normal")
         self.name_entry.delete(0, tk.END)
         self.name_entry.insert(0, name or "")
+        if self.role == "Staff":
+            self.name_entry.config(state="disabled")
         self.status_var.set(status or "Trống")
-
-    def open_table(self, table_id):
-        order = self.controller.open_table(table_id)
-
-        if order:
-            messagebox.showinfo("Đặt bàn", f"Mở order hiện tại của bàn {table_id}: {order[0]}")
-        else:
-            messagebox.showinfo("Đặt bàn", f"Tạo order mới cho bàn {table_id}")
 
     def add_table(self):
         name = self.name_entry.get().strip()
@@ -134,13 +140,17 @@ class TableView:
             messagebox.showwarning("Chưa chọn bàn", "Vui lòng chọn một bàn để cập nhật.")
             return
 
-        name = self.name_entry.get().strip()
         status = self.status_var.get()
-        if not name:
-            messagebox.showwarning("Thiếu dữ liệu", "Vui lòng nhập tên bàn.")
-            return
 
-        self.controller.edit_table(self.selected_table_id, name, status)
+        if self.role == "Staff":
+            self.controller.update_table_status_only(self.selected_table_id, status)
+        else:
+            name = self.name_entry.get().strip()
+            if not name:
+                messagebox.showwarning("Thiếu dữ liệu", "Vui lòng nhập tên bàn.")
+                return
+            self.controller.edit_table(self.selected_table_id, name, status)
+
         self.load_tables()
         self.reset_form(show_message=False)
 
@@ -159,7 +169,10 @@ class TableView:
 
     def reset_form(self, show_message=True):
         self.selected_table_id = None
+        self.name_entry.config(state="normal")
         self.name_entry.delete(0, tk.END)
+        if self.role == "Staff":
+            self.name_entry.config(state="disabled")
         self.status_var.set("Trống")
         if show_message:
             messagebox.showinfo("Làm mới", "Đã xóa dữ liệu chọn bàn.")
