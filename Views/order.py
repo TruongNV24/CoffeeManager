@@ -1,6 +1,8 @@
 import os
+import shutil
 import tkinter as tk
-from tkinter import messagebox
+import uuid
+from tkinter import filedialog, messagebox
 
 from Config.db import get_connection
 from Models.order import (
@@ -23,6 +25,7 @@ class OrderView:
         self.role = role
         self.selected_product_id = None
         self.current_order_id = None
+        self.current_image_preview = None
 
         self.frame = tk.Frame(parent, bg="white")
         self.frame.pack(fill="both", expand=True)
@@ -65,12 +68,16 @@ class OrderView:
 
         tk.Label(self.product_form, text="Tên món", bg="#f8f8f8").grid(row=0, column=0, sticky="w")
         tk.Label(self.product_form, text="Giá", bg="#f8f8f8").grid(row=0, column=1, sticky="w")
+        tk.Label(self.product_form, text="Ảnh", bg="#f8f8f8").grid(row=2, column=0, sticky="w", pady=(4, 0))
         self.product_name_var = tk.StringVar()
         self.product_price_var = tk.StringVar()
         self.product_status_var = tk.StringVar(value="Còn bán")
+        self.product_image_var = tk.StringVar()
         tk.Entry(self.product_form, textvariable=self.product_name_var, width=22).grid(row=1, column=0, padx=(0, 8), pady=4)
         tk.Entry(self.product_form, textvariable=self.product_price_var, width=10).grid(row=1, column=1, pady=4)
         tk.OptionMenu(self.product_form, self.product_status_var, "Còn bán", "Hết món").grid(row=1, column=2, padx=8)
+        tk.Entry(self.product_form, textvariable=self.product_image_var, width=26).grid(row=3, column=0, columnspan=2, sticky="we")
+        tk.Button(self.product_form, text="Chọn ảnh", command=self.pick_product_image).grid(row=3, column=2, padx=8)
 
         actions = tk.Frame(self.product_form, bg="#f8f8f8")
         actions.grid(row=1, column=3)
@@ -80,6 +87,8 @@ class OrderView:
         self.btn_update.pack(side="left", padx=2)
         self.btn_delete = tk.Button(actions, text="Xóa", command=self.delete_product_info)
         self.btn_delete.pack(side="left", padx=2)
+        self.image_preview_label = tk.Label(self.product_form, text="(Chưa có ảnh)", bg="#f8f8f8", fg="#666")
+        self.image_preview_label.grid(row=3, column=3, padx=8)
 
         right = tk.Frame(body, bg="#eef6ff", bd=1, relief="solid", width=360)
         right.pack(side="right", fill="both")
@@ -116,7 +125,8 @@ class OrderView:
         self.products = get_all_products()
         self.product_list.delete(0, tk.END)
         for p in self.products:
-            self.product_list.insert(tk.END, f"#{p[0]} | {p[1]} | {p[2]:,.0f}đ | {p[3]}")
+            image_note = "🖼️" if p[4] else "—"
+            self.product_list.insert(tk.END, f"#{p[0]} | {p[1]} | {p[2]:,.0f}đ | {p[3]} | {image_note}")
 
     def on_select_product(self, _event=None):
         sel = self.product_list.curselection()
@@ -128,6 +138,8 @@ class OrderView:
         self.product_name_var.set(p[1])
         self.product_price_var.set(str(p[2]))
         self.product_status_var.set(p[3])
+        self.product_image_var.set(p[4] or "")
+        self.refresh_image_preview(p[4])
 
     def _selected_table_id(self):
         raw = self.table_var.get().strip()
@@ -148,7 +160,7 @@ class OrderView:
         if not name:
             messagebox.showwarning("Thiếu dữ liệu", "Vui lòng nhập tên món")
             return
-        create_product(name, price, status)
+        create_product(name, price, status, self.product_image_var.get().strip() or None)
         self.load_products()
 
     def update_product_info(self):
@@ -161,7 +173,13 @@ class OrderView:
         except ValueError:
             messagebox.showwarning("Sai dữ liệu", "Giá món không hợp lệ")
             return
-        update_product(self.selected_product_id, name, price, status)
+        update_product(
+            self.selected_product_id,
+            name,
+            price,
+            status,
+            self.product_image_var.get().strip() or None,
+        )
         self.load_products()
 
     def delete_product_info(self):
@@ -254,3 +272,33 @@ class OrderView:
         self.load_tables()
         self.order_text.delete("1.0", tk.END)
         self.order_text.insert(tk.END, f"Đã thanh toán order #{paid_order_id}.\n")
+
+    def pick_product_image(self):
+        file_path = filedialog.askopenfilename(
+            title="Chọn ảnh món",
+            filetypes=[("Image files", "*.png *.jpg *.jpeg *.gif"), ("All files", "*.*")],
+        )
+        if not file_path:
+            return
+
+        os.makedirs("uploads", exist_ok=True)
+        ext = os.path.splitext(file_path)[1].lower()
+        new_name = f"{uuid.uuid4().hex}{ext}"
+        new_path = os.path.join("uploads", new_name)
+        shutil.copy2(file_path, new_path)
+        self.product_image_var.set(new_path)
+        self.refresh_image_preview(new_path)
+
+    def refresh_image_preview(self, image_path):
+        if not image_path or not os.path.exists(image_path):
+            self.current_image_preview = None
+            self.image_preview_label.configure(image="", text="(Chưa có ảnh)")
+            return
+
+        try:
+            preview = tk.PhotoImage(file=image_path)
+            self.current_image_preview = preview
+            self.image_preview_label.configure(image=preview, text="")
+        except tk.TclError:
+            self.current_image_preview = None
+            self.image_preview_label.configure(image="", text="(Không preview được, vẫn lưu đường dẫn)")
