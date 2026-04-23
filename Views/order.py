@@ -28,6 +28,7 @@ class OrderView:
         self.current_image_preview = None
         self.card_image_cache = {}
         self.product_cards = {}
+        self.project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
         self.frame = tk.Frame(parent, bg="white")
         self.frame.pack(fill="both", expand=True)
@@ -237,9 +238,10 @@ class OrderView:
             return self.card_image_cache[cache_key]
 
         image = None
-        if image_path and os.path.exists(image_path):
+        resolved_path = self._resolve_image_path(image_path)
+        if resolved_path:
             try:
-                image = tk.PhotoImage(file=image_path)
+                image = tk.PhotoImage(file=resolved_path)
             except tk.TclError:
                 image = None
 
@@ -251,6 +253,24 @@ class OrderView:
 
         self.card_image_cache[cache_key] = image
         return image
+
+    def _resolve_image_path(self, image_path):
+        if not image_path:
+            return None
+
+        normalized_path = os.path.normpath(image_path)
+        if os.path.isabs(normalized_path) and os.path.exists(normalized_path):
+            return normalized_path
+
+        local_candidate = os.path.normpath(os.path.join(os.getcwd(), normalized_path))
+        if os.path.exists(local_candidate):
+            return local_candidate
+
+        project_candidate = os.path.normpath(os.path.join(self.project_root, normalized_path))
+        if os.path.exists(project_candidate):
+            return project_candidate
+
+        return None
 
     def _selected_table_id(self):
         raw = self.table_var.get().strip()
@@ -392,22 +412,24 @@ class OrderView:
         if not file_path:
             return
 
-        os.makedirs("uploads", exist_ok=True)
+        os.makedirs(os.path.join(self.project_root, "uploads"), exist_ok=True)
         ext = os.path.splitext(file_path)[1].lower()
         new_name = f"{uuid.uuid4().hex}{ext}"
         new_path = os.path.join("uploads", new_name)
-        shutil.copy2(file_path, new_path)
+        new_abs_path = os.path.join(self.project_root, new_path)
+        shutil.copy2(file_path, new_abs_path)
         self.product_image_var.set(new_path)
         self.refresh_image_preview(new_path)
 
     def refresh_image_preview(self, image_path):
-        if not image_path or not os.path.exists(image_path):
+        resolved_path = self._resolve_image_path(image_path)
+        if not resolved_path:
             self.current_image_preview = None
             self.image_preview_label.configure(image="", text="(Chưa có ảnh)")
             return
 
         try:
-            preview = tk.PhotoImage(file=image_path)
+            preview = tk.PhotoImage(file=resolved_path)
             self.current_image_preview = preview
             self.image_preview_label.configure(image=preview, text="")
         except tk.TclError:
