@@ -258,17 +258,24 @@ class OrderView:
         if not image_path:
             return None
 
-        normalized_path = os.path.normpath(image_path)
-        if os.path.isabs(normalized_path) and os.path.exists(normalized_path):
-            return normalized_path
+        raw_path = image_path.strip()
+        normalized_candidates = {
+            os.path.normpath(raw_path),
+            os.path.normpath(raw_path.replace("\\", os.sep)),
+            os.path.normpath(raw_path.replace("/", os.sep)),
+        }
 
-        local_candidate = os.path.normpath(os.path.join(os.getcwd(), normalized_path))
-        if os.path.exists(local_candidate):
-            return local_candidate
+        for normalized_path in normalized_candidates:
+            if os.path.isabs(normalized_path) and os.path.exists(normalized_path):
+                return normalized_path
 
-        project_candidate = os.path.normpath(os.path.join(self.project_root, normalized_path))
-        if os.path.exists(project_candidate):
-            return project_candidate
+            local_candidate = os.path.normpath(os.path.join(os.getcwd(), normalized_path))
+            if os.path.exists(local_candidate):
+                return local_candidate
+
+            project_candidate = os.path.normpath(os.path.join(self.project_root, normalized_path))
+            if os.path.exists(project_candidate):
+                return project_candidate
 
         return None
 
