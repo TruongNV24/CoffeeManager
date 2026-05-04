@@ -89,6 +89,12 @@ def create_tables():
         FOREIGN KEY (CategoryID) REFERENCES Categories(CategoryID)
     )""")
 
+    # Migration cho DB cũ chưa có cột IsSynced ở Employees
+    cursor.execute("PRAGMA table_info(Employees)")
+    employee_columns = [col[1] for col in cursor.fetchall()]
+    if "IsSynced" not in employee_columns:
+        cursor.execute("ALTER TABLE Employees ADD COLUMN IsSynced INTEGER DEFAULT 0")
+
     # Migration cho DB cũ chưa có cột ProductImage
     cursor.execute("PRAGMA table_info(Products)")
     product_columns = [col[1] for col in cursor.fetchall()]
