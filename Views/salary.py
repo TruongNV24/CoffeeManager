@@ -228,43 +228,53 @@ class SalaryView:
             return
 
         employee_id = self.employee_map[employee_key]
-        conn = get_connection()
-        base_row = conn.execute(
-            """
-            SELECT IFNULL(p.BaseSalary, 0)
-            FROM Employees e
-            LEFT JOIN Positions p ON e.PositionID = p.PositionID
-            WHERE e.EmployeeID = ?
-            """,
-            (employee_id,),
-        ).fetchone()
-
-        base_salary = float(base_row[0] if base_row else 0)
-        total_salary = (base_salary / 26.0) * work_days + bonus
-
-        existing = conn.execute(
-            "SELECT SalaryID FROM Salaries WHERE EmployeeID = ? AND Month = ?",
-            (employee_id, month),
-        ).fetchone()
-
-        if existing:
-            conn.execute(
+        conn = None
+        try:
+            conn = get_connection()
+            base_row = conn.execute(
                 """
-                UPDATE Salaries
-                SET WorkDays = ?, Bonus = ?, TotalSalary = ?, IsSynced = 0
-                WHERE SalaryID = ?
+                SELECT IFNULL(p.BaseSalary, 0)
+                FROM Employees e
+                LEFT JOIN Positions p ON e.PositionID = p.PositionID
+                WHERE e.EmployeeID = ?
                 """,
-                (work_days, bonus, total_salary, existing[0]),
-            )
-        else:
-            conn.execute(
-                """
-                INSERT INTO Salaries (EmployeeID, Month, WorkDays, Bonus, TotalSalary, IsSynced)
-                VALUES (?, ?, ?, ?, ?, 0)
-                """,
-                (employee_id, month, work_days, bonus, total_salary),
-            )
-        conn.commit()
-        conn.close()
+                (employee_id,),
+            ).fetchone()
+
+            base_salary = float(base_row[0] if base_row else 0)
+            total_salary = (base_salary / 26.0) * work_days + bonus
+
+            existing = conn.execute(
+                "SELECT SalaryID FROM Salaries WHERE EmployeeID = ? AND Month = ?",
+                (employee_id, month),
+            ).fetchone()
+
+            if existing:
+                conn.execute(
+                    """
+                    UPDATE Salaries
+                    SET WorkDays = ?, Bonus = ?, TotalSalary = ?, IsSynced = 0
+                    WHERE SalaryID = ?
+                    """,
+                    (work_days, bonus, total_salary, existing[0]),
+                )
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO Salaries (EmployeeID, Month, WorkDays, Bonus, TotalSalary, IsSynced)
+                    VALUES (?, ?, ?, ?, ?, 0)
+                    """,
+                    (employee_id, month, work_days, bonus, total_salary),
+                )
+            conn.commit()
+        except Exception as exc:
+            if conn:
+                conn.rollback()
+            messagebox.showerror("Lỗi lưu bảng lương", f"Không thể lưu bảng lương: {exc}")
+            return
+        finally:
+            if conn:
+                conn.close()
+
         self._load_salaries()
         messagebox.showinfo("Thành công", "Đã lưu bảng lương")
