@@ -16,13 +16,11 @@ class EmployeeView:
         self.position_map = {}
         self._load_positions()
         self._load_employees()
-        self._load_shifts()
-        self._load_attendance()
 
     def _build_ui(self):
         title = tk.Label(
             self.frame,
-            text="Quản lý nhân viên - Ca làm - Chấm công",
+            text="Quản lý nhân viên",
             bg="white",
             fg="#2c3e50",
             font=("Arial", 15, "bold"),
@@ -33,8 +31,6 @@ class EmployeeView:
         self.notebook.pack(fill="both", expand=True, padx=16, pady=(0, 16))
 
         self._build_employee_tab()
-        self._build_shift_tab()
-        self._build_attendance_tab()
 
     def _build_employee_tab(self):
         tab = tk.Frame(self.notebook, bg="white")
@@ -205,7 +201,6 @@ class EmployeeView:
         self.emp_name.set(values[1])
         self.emp_phone.set(values[2])
         self.emp_position.set(values[3])
-        self.shift_emp_id.set(str(values[0]))
 
     def _add_employee(self):
         name = self.emp_name.get().strip()
