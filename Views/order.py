@@ -5,6 +5,7 @@ import uuid
 from tkinter import filedialog, messagebox
 
 from Config.db import get_connection
+from Config.image_config import CARD_IMAGE_SIZE, PREVIEW_IMAGE_SIZE
 from Models.order import (
     add_item_to_order,
     close_order,
@@ -17,6 +18,7 @@ from Models.product import (
     get_all_products,
     update_product,
 )
+from Utils.image_handler import ImageHandler
 
 
 class OrderView:
@@ -26,9 +28,10 @@ class OrderView:
         self.selected_product_id = None
         self.current_order_id = None
         self.current_image_preview = None
-        self.card_image_cache = {}
         self.product_cards = {}
+        self.product_image_labels = {}
         self.project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.image_handler = ImageHandler(self.project_root)
 
         self.frame = tk.Frame(parent, bg="white")
         self.frame.pack(fill="both", expand=True)
@@ -137,6 +140,7 @@ class OrderView:
 
     def load_products(self):
         self.products = get_all_products()
+        self.image_handler.clear_group("cards")
         self.render_product_cards()
 
     def on_select_product(self, _event=None):
@@ -159,8 +163,8 @@ class OrderView:
         for widget in self.product_grid.winfo_children():
             widget.destroy()
 
-        self.card_image_cache = {}
         self.product_cards = {}
+        self.product_image_labels = {}
         card_width = 140
         columns = 4
 
@@ -181,7 +185,7 @@ class OrderView:
             card.grid(row=row, column=column, padx=6, pady=6, sticky="n")
             card.grid_propagate(False)
 
-            image = self._build_product_image(product[4], width=110, height=78)
+            image = self.image_handler.get_image(product[4], CARD_IMAGE_SIZE, cache_group="cards")
             image_label = tk.Label(card, image=image, bg="white")
             image_label.image = image
             image_label.pack(pady=(0, 8))
@@ -214,6 +218,7 @@ class OrderView:
             self._bind_card_click(name_label, product[0])
             self._bind_card_click(price_label, product[0])
             self.product_cards[product[0]] = card
+            self.product_image_labels[product[0]] = image_label
 
         self._refresh_selected_card()
         self.product_canvas.configure(scrollregion=self.product_canvas.bbox("all"))
@@ -232,63 +237,6 @@ class OrderView:
             else:
                 card.configure(bg="white", bd=1, relief="solid")
 
-
-    def _load_photo_image(self, path):
-        try:
-            return tk.PhotoImage(file=path)
-        except tk.TclError:
-            return None
-
-    def _fit_image(self, image, width, height):
-        if not image:
-            return None
-        x_ratio = max(1, (image.width() + width - 1) // width)
-        y_ratio = max(1, (image.height() + height - 1) // height)
-        return image.subsample(x_ratio, y_ratio)
-
-    def _build_product_image(self, image_path, width=110, height=78):
-        cache_key = f"{image_path}|{width}x{height}"
-        if cache_key in self.card_image_cache:
-            return self.card_image_cache[cache_key]
-
-        image = None
-        resolved_path = self._resolve_image_path(image_path)
-        if resolved_path:
-            image = self._load_photo_image(resolved_path)
-
-        if image:
-            image = self._fit_image(image, width, height)
-        else:
-            image = tk.PhotoImage(width=width, height=height)
-            image.put("#d9d9d9", to=(0, 0, width, height))
-
-        self.card_image_cache[cache_key] = image
-        return image
-
-    def _resolve_image_path(self, image_path):
-        if not image_path:
-            return None
-
-        raw_path = image_path.strip()
-        normalized_candidates = {
-            os.path.normpath(raw_path),
-            os.path.normpath(raw_path.replace("\\", os.sep)),
-            os.path.normpath(raw_path.replace("/", os.sep)),
-        }
-
-        for normalized_path in normalized_candidates:
-            if os.path.isabs(normalized_path) and os.path.exists(normalized_path):
-                return normalized_path
-
-            local_candidate = os.path.normpath(os.path.join(os.getcwd(), normalized_path))
-            if os.path.exists(local_candidate):
-                return local_candidate
-
-            project_candidate = os.path.normpath(os.path.join(self.project_root, normalized_path))
-            if os.path.exists(project_candidate):
-                return project_candidate
-
-        return None
 
     def _selected_table_id(self):
         raw = self.table_var.get().strip()
@@ -438,24 +386,14 @@ class OrderView:
         shutil.copy2(file_path, new_abs_path)
         self.product_image_var.set(new_path)
         self.refresh_image_preview(new_path)
-        if self.current_image_preview is None:
-            messagebox.showwarning(
-                "Ảnh chưa hiển thị được",
-                "Ảnh đã lưu nhưng Tkinter không đọc được định dạng này. "
-                "Bạn nên dùng PNG hoặc GIF để hiển thị ổn định.",
-            )
 
     def refresh_image_preview(self, image_path):
-        resolved_path = self._resolve_image_path(image_path)
+        resolved_path = self.image_handler.resolve_path(image_path)
         if not resolved_path:
             self.current_image_preview = None
             self.image_preview_label.configure(image="", text="(Chưa có ảnh)")
             return
 
-        preview = self._load_photo_image(resolved_path)
-        if preview:
-            self.current_image_preview = self._fit_image(preview, 120, 90)
-            self.image_preview_label.configure(image=self.current_image_preview, text="")
-        else:
-            self.current_image_preview = None
-            self.image_preview_label.configure(image="", text="(Định dạng ảnh không được Tk hỗ trợ)")
+        self.current_image_preview = self.image_handler.get_image(resolved_path, PREVIEW_IMAGE_SIZE, cache_group="preview")
+        self.image_preview_label.configure(image=self.current_image_preview, text="")
+        self.image_preview_label.image = self.current_image_preview
