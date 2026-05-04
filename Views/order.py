@@ -232,6 +232,20 @@ class OrderView:
             else:
                 card.configure(bg="white", bd=1, relief="solid")
 
+
+    def _load_photo_image(self, path):
+        try:
+            return tk.PhotoImage(file=path)
+        except tk.TclError:
+            return None
+
+    def _fit_image(self, image, width, height):
+        if not image:
+            return None
+        x_ratio = max(1, (image.width() + width - 1) // width)
+        y_ratio = max(1, (image.height() + height - 1) // height)
+        return image.subsample(x_ratio, y_ratio)
+
     def _build_product_image(self, image_path, width=110, height=78):
         cache_key = f"{image_path}|{width}x{height}"
         if cache_key in self.card_image_cache:
@@ -240,13 +254,10 @@ class OrderView:
         image = None
         resolved_path = self._resolve_image_path(image_path)
         if resolved_path:
-            try:
-                image = tk.PhotoImage(file=resolved_path)
-            except tk.TclError:
-                image = None
+            image = self._load_photo_image(resolved_path)
 
         if image:
-            image = image.subsample(max(1, image.width() // width), max(1, image.height() // height))
+            image = self._fit_image(image, width, height)
         else:
             image = tk.PhotoImage(width=width, height=height)
             image.put("#d9d9d9", to=(0, 0, width, height))
@@ -414,7 +425,7 @@ class OrderView:
     def pick_product_image(self):
         file_path = filedialog.askopenfilename(
             title="Chọn ảnh món",
-            filetypes=[("Image files", "*.png *.jpg *.jpeg *.gif"), ("All files", "*.*")],
+            filetypes=[("Image files", "*.png *.gif *.ppm *.pgm *.jpg *.jpeg"), ("All files", "*.*")],
         )
         if not file_path:
             return
@@ -427,6 +438,12 @@ class OrderView:
         shutil.copy2(file_path, new_abs_path)
         self.product_image_var.set(new_path)
         self.refresh_image_preview(new_path)
+        if self.current_image_preview is None:
+            messagebox.showwarning(
+                "Ảnh chưa hiển thị được",
+                "Ảnh đã lưu nhưng Tkinter không đọc được định dạng này. "
+                "Bạn nên dùng PNG hoặc GIF để hiển thị ổn định.",
+            )
 
     def refresh_image_preview(self, image_path):
         resolved_path = self._resolve_image_path(image_path)
@@ -435,10 +452,10 @@ class OrderView:
             self.image_preview_label.configure(image="", text="(Chưa có ảnh)")
             return
 
-        try:
-            preview = tk.PhotoImage(file=resolved_path)
-            self.current_image_preview = preview
-            self.image_preview_label.configure(image=preview, text="")
-        except tk.TclError:
+        preview = self._load_photo_image(resolved_path)
+        if preview:
+            self.current_image_preview = self._fit_image(preview, 120, 90)
+            self.image_preview_label.configure(image=self.current_image_preview, text="")
+        else:
             self.current_image_preview = None
-            self.image_preview_label.configure(image="", text="(Không preview được, vẫn lưu đường dẫn)")
+            self.image_preview_label.configure(image="", text="(Định dạng ảnh không được Tk hỗ trợ)")
