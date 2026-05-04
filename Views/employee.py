@@ -13,6 +13,8 @@ class EmployeeView:
         self.frame.pack(fill="both", expand=True)
 
         self._build_ui()
+        self.position_map = {}
+        self._load_positions()
         self._load_employees()
         self._load_shifts()
         self._load_attendance()
@@ -51,7 +53,8 @@ class EmployeeView:
 
         tk.Entry(form, textvariable=self.emp_name, width=28).grid(row=1, column=0, pady=4)
         tk.Entry(form, textvariable=self.emp_phone, width=18).grid(row=1, column=1, padx=(12, 0), pady=4)
-        tk.Entry(form, textvariable=self.emp_position, width=20).grid(row=1, column=2, padx=(12, 0), pady=4)
+        self.position_combo = ttk.Combobox(form, textvariable=self.emp_position, width=18, state="readonly")
+        self.position_combo.grid(row=1, column=2, padx=(12, 0), pady=4)
 
         action = tk.Frame(form, bg="white")
         action.grid(row=1, column=3, padx=16)
@@ -134,6 +137,19 @@ class EmployeeView:
             self.attendance_tree.column(col, width=width)
         self.attendance_tree.pack(fill="both", expand=True, padx=8, pady=(0, 8))
 
+
+    def _load_positions(self):
+        conn = get_connection()
+        rows = conn.execute(
+            "SELECT PositionID, PositionName FROM Positions ORDER BY PositionName"
+        ).fetchall()
+        conn.close()
+
+        self.position_map = {row[1]: row[0] for row in rows}
+        self.position_combo["values"] = list(self.position_map.keys())
+        if self.position_map and not self.emp_position.get():
+            self.emp_position.set(next(iter(self.position_map.keys())))
+
     def _load_employees(self):
         for item in self.employee_tree.get_children():
             self.employee_tree.delete(item)
@@ -191,30 +207,16 @@ class EmployeeView:
         self.emp_position.set(values[3])
         self.shift_emp_id.set(str(values[0]))
 
-    def _ensure_position(self, position_name):
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT PositionID FROM Positions WHERE PositionName = ?", (position_name,))
-        row = cur.fetchone()
-        if row:
-            conn.close()
-            return row[0]
-        cur.execute(
-            "INSERT INTO Positions (PositionName, BaseSalary) VALUES (?, ?)",
-            (position_name, 0),
-        )
-        position_id = cur.lastrowid
-        conn.commit()
-        conn.close()
-        return position_id
-
     def _add_employee(self):
         name = self.emp_name.get().strip()
         if not name:
             messagebox.showwarning("Thiếu dữ liệu", "Vui lòng nhập họ tên nhân viên")
             return
-        position_name = self.emp_position.get().strip() or "Nhân viên"
-        position_id = self._ensure_position(position_name)
+        position_name = self.emp_position.get().strip()
+        position_id = self.position_map.get(position_name)
+        if not position_id:
+            messagebox.showwarning("Thiếu dữ liệu", "Vui lòng chọn vị trí hợp lệ từ danh sách")
+            return
 
         conn = get_connection()
         conn.execute(
@@ -233,7 +235,10 @@ class EmployeeView:
         if not name:
             messagebox.showwarning("Thiếu dữ liệu", "Tên nhân viên không được để trống")
             return
-        position_id = self._ensure_position(self.emp_position.get().strip() or "Nhân viên")
+        position_id = self.position_map.get(self.emp_position.get().strip())
+        if not position_id:
+            messagebox.showwarning("Thiếu dữ liệu", "Vui lòng chọn vị trí hợp lệ từ danh sách")
+            return
 
         conn = get_connection()
         conn.execute(
