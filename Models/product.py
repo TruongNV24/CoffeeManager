@@ -1,3 +1,5 @@
+import sqlite3
+
 from Config.db import get_connection
 
 
@@ -45,6 +47,12 @@ def update_product(product_id, name, price, status, image_path=None):
 def delete_product(product_id):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM Products WHERE ProductID = ?", (product_id,))
-    conn.commit()
-    conn.close()
+    try:
+        cursor.execute("DELETE FROM Products WHERE ProductID = ?", (product_id,))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        # Product đang được tham chiếu trong OrderDetails nên không thể xóa cứng
+        return False
+    finally:
+        conn.close()
