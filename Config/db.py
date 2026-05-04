@@ -141,6 +141,12 @@ def create_tables():
         FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID)
     )""")
 
+    # Migration cho DB cũ chưa có cột IsSynced ở Salaries
+    cursor.execute("PRAGMA table_info(Salaries)")
+    salary_columns = [col[1] for col in cursor.fetchall()]
+    if "IsSynced" not in salary_columns:
+        cursor.execute("ALTER TABLE Salaries ADD COLUMN IsSynced INTEGER DEFAULT 0")
+
 
     # 10. WorkShifts
     cursor.execute("""
