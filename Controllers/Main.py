@@ -1,6 +1,7 @@
 from Config.db import db_cloud, get_connection
 from Views.order import OrderView
 from Views.table import TableView
+from Views.employee import EmployeeView
 
 
 class MainController:
@@ -54,16 +55,8 @@ class MainController:
             self._deny_access()
             return
 
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM Employees WHERE IsSynced = 0")
-        unsynced = cursor.fetchall()
-        conn.close()
-
-        msg = "👨‍💼 Quản lý nhân viên"
-        if unsynced:
-            msg += f" (Có {len(unsynced)} người chưa đồng bộ mây)"
-        self.content_view.show_text(msg)
+        self.content_view.clear()
+        EmployeeView(self.content_view.frame)
 
     def show_salary(self):
         if not self._can_access("show_salary"):

@@ -135,5 +135,26 @@ def create_tables():
         FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID)
     )""")
 
+
+    # 10. WorkShifts
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS WorkShifts (
+        ShiftID INTEGER PRIMARY KEY AUTOINCREMENT,
+        EmployeeID INTEGER NOT NULL,
+        ShiftDate TEXT NOT NULL,
+        StartTime TEXT NOT NULL,
+        EndTime TEXT NOT NULL,
+        FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID)
+    )""")
+
+    # 11. Attendance
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS Attendance (
+        AttendanceID INTEGER PRIMARY KEY AUTOINCREMENT,
+        ShiftID INTEGER NOT NULL,
+        CheckInTime TEXT DEFAULT CURRENT_TIMESTAMP,
+        Status TEXT CHECK(Status IN ('Có mặt', 'Đi trễ', 'Vắng')) DEFAULT 'Có mặt',
+        FOREIGN KEY (ShiftID) REFERENCES WorkShifts(ShiftID)
+    )""")
     conn.commit()
     conn.close()
