@@ -186,9 +186,13 @@ class OrderView:
             card.grid_propagate(False)
 
             image = self.image_handler.get_image(product[4], CARD_IMAGE_SIZE, cache_group="cards")
-            image_label = tk.Label(card, image=image, bg="white")
+            image_box = tk.Frame(card, bg="white", width=CARD_IMAGE_SIZE[0], height=CARD_IMAGE_SIZE[1])
+            image_box.pack(pady=(0, 8))
+            image_box.pack_propagate(False)
+
+            image_label = tk.Label(image_box, image=image, bg="white")
             image_label.image = image
-            image_label.pack(pady=(0, 8))
+            image_label.place(relx=0.5, rely=0.5, anchor="center")
 
             name_label = tk.Label(
                 card,
@@ -197,6 +201,7 @@ class OrderView:
                 font=("Arial", 10, "bold"),
                 wraplength=116,
                 justify="center",
+                height=2,
             )
             name_label.pack(fill="x")
 
@@ -209,9 +214,11 @@ class OrderView:
             )
             price_label.pack(pady=(4, 0))
 
-            if product[3] == "Hết món":
-                sold_out = tk.Label(card, text="HẾT MÓN", bg="#fce6e6", fg="#c0392b", font=("Arial", 9, "bold"))
-                sold_out.pack(pady=(8, 0), fill="x")
+            status_text = "HẾT MÓN" if product[3] == "Hết món" else ""
+            status_bg = "#fce6e6" if product[3] == "Hết món" else "white"
+            status_fg = "#c0392b" if product[3] == "Hết món" else "white"
+            sold_out = tk.Label(card, text=status_text, bg=status_bg, fg=status_fg, font=("Arial", 9, "bold"), height=1)
+            sold_out.pack(pady=(8, 0), fill="x")
 
             self._bind_card_click(card, product[0])
             self._bind_card_click(image_label, product[0])
