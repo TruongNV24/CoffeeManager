@@ -10,6 +10,7 @@ from Models.order import (
     add_item_to_order,
     close_order,
     create_or_get_active_order,
+    get_active_order_by_table,
     get_order_details,
 )
 from Models.product import (
@@ -46,6 +47,7 @@ class OrderView:
 
         tk.Label(top, text="Bàn:", bg="white", font=("Arial", 11, "bold")).pack(side="left")
         self.table_var = tk.StringVar()
+        self.table_var.trace_add("write", self._on_table_change)
         self.table_menu = tk.OptionMenu(top, self.table_var, "")
         self.table_menu.config(width=18)
         self.table_menu.pack(side="left", padx=6)
@@ -137,6 +139,7 @@ class OrderView:
             menu.add_command(label=label, command=lambda value=label: self.table_var.set(value))
 
         self.table_var.set(options[0] if options else "")
+        self._sync_current_order_with_selected_table()
 
     def load_products(self):
         self.products = get_all_products()
@@ -251,6 +254,18 @@ class OrderView:
             return None
         return int(raw.split("-")[0].strip())
 
+    def _on_table_change(self, *_args):
+        self._sync_current_order_with_selected_table()
+
+    def _sync_current_order_with_selected_table(self):
+        table_id = self._selected_table_id()
+        if not table_id:
+            self.current_order_id = None
+            return
+
+        active_order = get_active_order_by_table(table_id)
+        self.current_order_id = active_order[0] if active_order else None
+
     def add_product(self):
         if self.role != "Admin":
             return
@@ -326,6 +341,7 @@ class OrderView:
         self.show_current_order()
 
     def show_current_order(self):
+        self._sync_current_order_with_selected_table()
         order_id = self.current_order_id
         if not order_id:
             self.order_text.delete("1.0", tk.END)
