@@ -284,7 +284,13 @@ class OrderView:
             return
         if not messagebox.askyesno("Xác nhận", "Xóa món đã chọn?"):
             return
-        delete_product(self.selected_product_id)
+        deleted = delete_product(self.selected_product_id)
+        if not deleted:
+            messagebox.showerror(
+                "Không thể xóa",
+                "Món này đã xuất hiện trong order nên không thể xóa. Hãy chuyển trạng thái sang Hết món.",
+            )
+            return
         self.selected_product_id = None
         self.load_products()
 
