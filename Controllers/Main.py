@@ -2,6 +2,7 @@ from Config.db import db_cloud, get_connection
 from Views.order import OrderView
 from Views.table import TableView
 from Views.employee import EmployeeView
+from Views.salary import SalaryView
 
 
 class MainController:
@@ -63,7 +64,8 @@ class MainController:
             self._deny_access()
             return
 
-        self.content_view.show_text("💰 Quản lý Lương & Công")
+        self.content_view.clear()
+        SalaryView(self.content_view.frame)
 
     def show_users(self):
         if not self._can_access("show_users"):
