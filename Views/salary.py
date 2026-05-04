@@ -1,3 +1,4 @@
+import re
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -215,6 +216,10 @@ class SalaryView:
             messagebox.showwarning("Thiếu dữ liệu", "Vui lòng nhập tháng")
             return
 
+        if not re.fullmatch(r"\d{4}-\d{2}", month):
+            messagebox.showwarning("Sai dữ liệu", "Tháng phải theo định dạng YYYY-MM")
+            return
+
         try:
             work_days = int(self.salary_work_days.get().strip() or 0)
             bonus = float(self.salary_bonus.get().strip() or 0)
@@ -235,15 +240,31 @@ class SalaryView:
         ).fetchone()
 
         base_salary = float(base_row[0] if base_row else 0)
-        total_salary = base_salary + bonus
+        total_salary = (base_salary / 26.0) * work_days + bonus
 
-        conn.execute(
-            """
-            INSERT INTO Salaries (EmployeeID, Month, WorkDays, Bonus, TotalSalary, IsSynced)
-            VALUES (?, ?, ?, ?, ?, 0)
-            """,
-            (employee_id, month, work_days, bonus, total_salary),
-        )
+        existing = conn.execute(
+            "SELECT SalaryID FROM Salaries WHERE EmployeeID = ? AND Month = ?",
+            (employee_id, month),
+        ).fetchone()
+
+        if existing:
+            conn.execute(
+                """
+                UPDATE Salaries
+                SET WorkDays = ?, Bonus = ?, TotalSalary = ?, IsSynced = 0
+                WHERE SalaryID = ?
+                """,
+                (work_days, bonus, total_salary, existing[0]),
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO Salaries (EmployeeID, Month, WorkDays, Bonus, TotalSalary, IsSynced)
+                VALUES (?, ?, ?, ?, ?, 0)
+                """,
+                (employee_id, month, work_days, bonus, total_salary),
+            )
         conn.commit()
         conn.close()
         self._load_salaries()
+        messagebox.showinfo("Thành công", "Đã lưu bảng lương")
