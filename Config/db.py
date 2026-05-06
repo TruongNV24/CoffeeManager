@@ -73,8 +73,19 @@ def create_tables():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS Categories (
         CategoryID INTEGER PRIMARY KEY AUTOINCREMENT,
-        CategoryName TEXT NOT NULL
+        CategoryName TEXT UNIQUE NOT NULL
     )""")
+    for category_name in ("Nước uống", "Đồ ăn"):
+        cursor.execute(
+            """
+            INSERT INTO Categories (CategoryName)
+            SELECT ?
+            WHERE NOT EXISTS (
+                SELECT 1 FROM Categories WHERE CategoryName = ?
+            )
+            """,
+            (category_name, category_name),
+        )
 
     # 6. Products (Thêm IsSynced để đồng bộ menu)
     cursor.execute("""
@@ -95,11 +106,21 @@ def create_tables():
     if "IsSynced" not in employee_columns:
         cursor.execute("ALTER TABLE Employees ADD COLUMN IsSynced INTEGER DEFAULT 0")
 
-    # Migration cho DB cũ chưa có cột ProductImage
+    # Migration cho DB cũ chưa có cột CategoryID/ProductImage
     cursor.execute("PRAGMA table_info(Products)")
     product_columns = [col[1] for col in cursor.fetchall()]
+    if "CategoryID" not in product_columns:
+        cursor.execute("ALTER TABLE Products ADD COLUMN CategoryID INTEGER")
     if "ProductImage" not in product_columns:
         cursor.execute("ALTER TABLE Products ADD COLUMN ProductImage TEXT")
+
+    cursor.execute("SELECT CategoryID FROM Categories WHERE CategoryName = ?", ("Nước uống",))
+    default_category = cursor.fetchone()
+    if default_category:
+        cursor.execute(
+            "UPDATE Products SET CategoryID = ? WHERE CategoryID IS NULL",
+            (default_category[0],),
+        )
 
     # 7. Orders (QUAN TRỌNG: Cần đồng bộ để chủ quán xem doanh thu)
     cursor.execute("""
