@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from Config.db import get_connection
+from Views.theme import COLORS, FONT_FAMILY
 
 
 class SalaryView:
@@ -10,7 +11,7 @@ class SalaryView:
         self.parent = parent
         self.selected_position_id = None
 
-        self.frame = tk.Frame(parent, bg="white")
+        self.frame = tk.Frame(parent, bg=COLORS["app_bg"])
         self.frame.pack(fill="both", expand=True)
 
         self._build_ui()
@@ -21,9 +22,9 @@ class SalaryView:
         title = tk.Label(
             self.frame,
             text="Quản lý lương nhân viên",
-            bg="white",
-            fg="#2c3e50",
-            font=("Arial", 15, "bold"),
+            bg=COLORS["app_bg"],
+            fg=COLORS["text"],
+            font=(FONT_FAMILY, 18, "bold"),
         )
         title.pack(anchor="w", padx=16, pady=(12, 8))
 
@@ -34,14 +35,14 @@ class SalaryView:
         self._build_salary_tab(notebook)
 
     def _build_position_tab(self, notebook):
-        tab = tk.Frame(notebook, bg="white")
+        tab = tk.Frame(notebook, bg=COLORS["surface"])
         notebook.add(tab, text="Tạo vị trí & lương cơ bản")
 
-        form = tk.Frame(tab, bg="white")
+        form = tk.Frame(tab, bg=COLORS["surface"])
         form.pack(fill="x", padx=8, pady=8)
 
-        tk.Label(form, text="Tên vị trí", bg="white").grid(row=0, column=0, sticky="w")
-        tk.Label(form, text="Lương cơ bản", bg="white").grid(row=0, column=1, sticky="w", padx=(12, 0))
+        tk.Label(form, text="Tên vị trí", bg=COLORS["surface"]).grid(row=0, column=0, sticky="w")
+        tk.Label(form, text="Lương cơ bản", bg=COLORS["surface"]).grid(row=0, column=1, sticky="w", padx=(12, 0))
 
         self.position_name = tk.StringVar()
         self.base_salary = tk.StringVar(value="0")
@@ -49,10 +50,10 @@ class SalaryView:
         tk.Entry(form, textvariable=self.position_name, width=28).grid(row=1, column=0, pady=4)
         tk.Entry(form, textvariable=self.base_salary, width=16).grid(row=1, column=1, padx=(12, 0), pady=4)
 
-        action = tk.Frame(form, bg="white")
+        action = tk.Frame(form, bg=COLORS["surface"])
         action.grid(row=1, column=2, padx=16)
-        tk.Button(action, text="Thêm", bg="#2ecc71", fg="white", command=self._add_position).pack(side="left", padx=3)
-        tk.Button(action, text="Cập nhật", bg="#3498db", fg="white", command=self._update_position).pack(side="left", padx=3)
+        tk.Button(action, text="Thêm", bg=COLORS["success"], fg="white", command=self._add_position).pack(side="left", padx=3)
+        tk.Button(action, text="Cập nhật", bg=COLORS["info"], fg="white", command=self._update_position).pack(side="left", padx=3)
 
         self.position_tree = ttk.Treeview(tab, columns=("id", "name", "salary"), show="headings", height=14)
         for col, text, width in [
@@ -66,16 +67,16 @@ class SalaryView:
         self.position_tree.bind("<<TreeviewSelect>>", self._on_position_select)
 
     def _build_salary_tab(self, notebook):
-        tab = tk.Frame(notebook, bg="white")
+        tab = tk.Frame(notebook, bg=COLORS["surface"])
         notebook.add(tab, text="Bảng lương")
 
-        form = tk.Frame(tab, bg="white")
+        form = tk.Frame(tab, bg=COLORS["surface"])
         form.pack(fill="x", padx=8, pady=8)
 
-        tk.Label(form, text="Nhân viên", bg="white").grid(row=0, column=0, sticky="w")
-        tk.Label(form, text="Tháng (YYYY-MM)", bg="white").grid(row=0, column=1, sticky="w", padx=(12, 0))
-        tk.Label(form, text="Số ngày công", bg="white").grid(row=0, column=2, sticky="w", padx=(12, 0))
-        tk.Label(form, text="Thưởng/Phạt", bg="white").grid(row=0, column=3, sticky="w", padx=(12, 0))
+        tk.Label(form, text="Nhân viên", bg=COLORS["surface"]).grid(row=0, column=0, sticky="w")
+        tk.Label(form, text="Tháng (YYYY-MM)", bg=COLORS["surface"]).grid(row=0, column=1, sticky="w", padx=(12, 0))
+        tk.Label(form, text="Số ngày công", bg=COLORS["surface"]).grid(row=0, column=2, sticky="w", padx=(12, 0))
+        tk.Label(form, text="Thưởng/Phạt", bg=COLORS["surface"]).grid(row=0, column=3, sticky="w", padx=(12, 0))
 
         self.salary_employee = tk.StringVar()
         self.salary_month = tk.StringVar()
@@ -87,7 +88,7 @@ class SalaryView:
         tk.Entry(form, textvariable=self.salary_month, width=14).grid(row=1, column=1, padx=(12, 0), pady=4)
         tk.Entry(form, textvariable=self.salary_work_days, width=12).grid(row=1, column=2, padx=(12, 0), pady=4)
         tk.Entry(form, textvariable=self.salary_bonus, width=14).grid(row=1, column=3, padx=(12, 0), pady=4)
-        tk.Button(form, text="Lưu bảng lương", bg="#16a085", fg="white", command=self._save_salary).grid(row=1, column=4, padx=16)
+        tk.Button(form, text="Lưu bảng lương", bg=COLORS["success"], fg="white", command=self._save_salary).grid(row=1, column=4, padx=16)
 
         self.salary_tree = ttk.Treeview(
             tab,

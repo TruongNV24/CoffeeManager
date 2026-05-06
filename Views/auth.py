@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 
 from Config.db import get_connection
+from Views.theme import COLORS, FONT_FAMILY, button, entry
 
 
 class AuthView:
@@ -10,45 +11,55 @@ class AuthView:
         self.on_login_success = on_login_success
         self.mode = "signin"
 
-        self.frame = tk.Frame(root, bg="#0a0c16")
+        self.frame = tk.Frame(root, bg=COLORS["app_bg"])
         self.frame.pack(expand=True, fill="both")
 
         self._build_ui()
 
     def _build_ui(self):
-        container = tk.Frame(self.frame, bg="#05070f", padx=30, pady=25)
-        container.place(relx=0.5, rely=0.5, anchor="center", width=760, height=420)
+        container = tk.Frame(self.frame, bg=COLORS["surface"], padx=34, pady=28, highlightthickness=1, highlightbackground=COLORS["border"])
+        container.place(relx=0.5, rely=0.5, anchor="center", width=820, height=460)
 
         # Left panel (illustration substitute)
-        left_panel = tk.Frame(container, bg="#05070f")
+        left_panel = tk.Frame(container, bg=COLORS["primary_dark"], padx=26, pady=24)
         left_panel.pack(side="left", fill="both", expand=True)
 
         tk.Label(
             left_panel,
             text="WELCOME",
-            bg="#05070f",
-            fg="white",
-            font=("Arial", 20, "bold"),
+            bg=COLORS["primary_dark"],
+            fg=COLORS["white"],
+            font=(FONT_FAMILY, 22, "bold"),
         ).pack(anchor="nw")
 
         tk.Label(
             left_panel,
             text="☕",
-            bg="#05070f",
-            fg="#1fb6ff",
-            font=("Arial", 82),
+            bg=COLORS["primary_dark"],
+            fg="#f6c177",
+            font=(FONT_FAMILY, 86),
         ).pack(expand=True)
 
+        tk.Label(
+            left_panel,
+            text="Một nơi gọn gàng để quản lý bàn, gọi món và nhân sự quán cà phê.",
+            bg=COLORS["primary_dark"],
+            fg="#ead7c4",
+            font=(FONT_FAMILY, 11),
+            wraplength=290,
+            justify="left",
+        ).pack(anchor="w", pady=(0, 8))
+
         # Right panel (form)
-        right_panel = tk.Frame(container, bg="#05070f")
+        right_panel = tk.Frame(container, bg=COLORS["surface"], padx=12)
         right_panel.pack(side="right", fill="both", expand=True, padx=(25, 0))
 
         self.title_label = tk.Label(
             right_panel,
             text="Sign In",
-            bg="#05070f",
-            fg="white",
-            font=("Arial", 18, "bold"),
+            bg=COLORS["surface"],
+            fg=COLORS["text"],
+            font=(FONT_FAMILY, 22, "bold"),
         )
         self.title_label.pack(pady=(15, 22))
 
@@ -58,14 +69,10 @@ class AuthView:
         self._create_labeled_entry(right_panel, "Username", self.username_var)
         self._create_labeled_entry(right_panel, "Password", self.password_var, show="*")
 
-        self.action_btn = tk.Button(
+        self.action_btn = button(
             right_panel,
             text="LOGIN",
-            bg="#2a43ff",
-            fg="white",
-            relief="flat",
-            font=("Arial", 11, "bold"),
-            cursor="hand2",
+            variant="primary",
             command=self._handle_action,
         )
         self.action_btn.pack(fill="x", pady=(16, 8), ipady=6)
@@ -73,20 +80,17 @@ class AuthView:
         self.helper_label = tk.Label(
             right_panel,
             text="No account yet?",
-            bg="#05070f",
-            fg="#d6d6d6",
-            font=("Arial", 10),
+            bg=COLORS["surface"],
+            fg=COLORS["muted"],
+            font=(FONT_FAMILY, 10),
         )
         self.helper_label.pack(side="left", pady=(10, 0))
 
-        self.toggle_btn = tk.Button(
+        self.toggle_btn = button(
             right_panel,
             text="SIGN UP NOW",
-            bg="#17a2b8",
-            fg="white",
-            relief="flat",
-            cursor="hand2",
-            font=("Arial", 9, "bold"),
+            variant="ghost",
+            font=(FONT_FAMILY, 9, "bold"),
             command=self._toggle_mode,
         )
         self.toggle_btn.pack(side="right", pady=(10, 0))
@@ -95,22 +99,18 @@ class AuthView:
         tk.Label(
             parent,
             text=label,
-            bg="#05070f",
-            fg="#c5c5c5",
-            font=("Arial", 10),
+            bg=COLORS["surface"],
+            fg=COLORS["muted"],
+            font=(FONT_FAMILY, 10, "bold"),
         ).pack(anchor="w", pady=(0, 4))
 
-        entry = tk.Entry(
+        entry_widget = entry(
             parent,
             textvariable=variable,
-            bg="#0b1021",
-            fg="white",
-            insertbackground="white",
-            relief="flat",
             show=show,
-            font=("Arial", 11),
+            font=(FONT_FAMILY, 11),
         )
-        entry.pack(fill="x", pady=(0, 14), ipady=8)
+        entry_widget.pack(fill="x", pady=(0, 14), ipady=8)
 
     def _toggle_mode(self):
         self.mode = "signup" if self.mode == "signin" else "signin"

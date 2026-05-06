@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 
 from Controllers.table import TableController
+from Views.theme import COLORS, FONT_FAMILY, button, entry
 
 
 class TableView:
@@ -11,61 +12,73 @@ class TableView:
         self.controller = TableController()
         self.selected_table_id = None
 
-        self.frame = tk.Frame(parent, bg="white")
+        self.frame = tk.Frame(parent, bg=COLORS["app_bg"])
         self.frame.pack(fill="both", expand=True)
 
         self.build_crud_panel()
         self.load_tables()
 
     def build_crud_panel(self):
-        form_frame = tk.Frame(self.frame, bg="white")
-        form_frame.pack(fill="x", padx=20, pady=15)
+        header = tk.Frame(self.frame, bg=COLORS["app_bg"])
+        header.pack(fill="x", padx=24, pady=(20, 8))
+        tk.Label(
+            header,
+            text="Sơ đồ bàn",
+            bg=COLORS["app_bg"],
+            fg=COLORS["text"],
+            font=(FONT_FAMILY, 20, "bold"),
+        ).pack(anchor="w")
+        tk.Label(
+            header,
+            text="Theo dõi trạng thái và cập nhật bàn chỉ với một lần chọn.",
+            bg=COLORS["app_bg"],
+            fg=COLORS["muted"],
+            font=(FONT_FAMILY, 10),
+        ).pack(anchor="w", pady=(2, 0))
 
-        tk.Label(form_frame, text="Tên bàn:", bg="white", font=("Arial", 11)).grid(
+        form_frame = tk.Frame(
+            self.frame,
+            bg=COLORS["surface"],
+            padx=18,
+            pady=16,
+            highlightthickness=1,
+            highlightbackground=COLORS["border"],
+        )
+        form_frame.pack(fill="x", padx=24, pady=(8, 16))
+
+        tk.Label(form_frame, text="Tên bàn", bg=COLORS["surface"], fg=COLORS["muted"], font=(FONT_FAMILY, 10, "bold")).grid(
             row=0, column=0, sticky="w", padx=(0, 8)
         )
-        self.name_entry = tk.Entry(form_frame, width=24, font=("Arial", 11))
-        self.name_entry.grid(row=0, column=1, sticky="w")
+        self.name_entry = entry(form_frame, width=24, font=(FONT_FAMILY, 11))
+        self.name_entry.grid(row=1, column=0, sticky="w", ipady=7, padx=(0, 14))
 
-        tk.Label(form_frame, text="Trạng thái:", bg="white", font=("Arial", 11)).grid(
-            row=0, column=2, sticky="w", padx=(18, 8)
+        tk.Label(form_frame, text="Trạng thái", bg=COLORS["surface"], fg=COLORS["muted"], font=(FONT_FAMILY, 10, "bold")).grid(
+            row=0, column=1, sticky="w", padx=(0, 8)
         )
         self.status_var = tk.StringVar(value="Trống")
         status_options = ("Trống", "Đang dùng")
         self.status_menu = tk.OptionMenu(form_frame, self.status_var, *status_options)
-        self.status_menu.config(width=10)
-        self.status_menu.grid(row=0, column=3, sticky="w")
+        self.status_menu.config(width=12, bg=COLORS["white"], fg=COLORS["text"], relief="flat", highlightthickness=1, highlightbackground=COLORS["border"])
+        self.status_menu.grid(row=1, column=1, sticky="w", ipady=3)
 
-        action_frame = tk.Frame(form_frame, bg="white")
-        action_frame.grid(row=0, column=4, padx=(24, 0))
+        action_frame = tk.Frame(form_frame, bg=COLORS["surface"])
+        action_frame.grid(row=1, column=2, padx=(24, 0))
 
-        self.btn_add = tk.Button(
-            action_frame, text="Thêm", bg="#2ecc71", fg="white", command=self.add_table
-        )
+        self.btn_add = button(action_frame, text="Thêm", variant="success", command=self.add_table)
         self.btn_add.pack(side="left", padx=4)
-        self.btn_update = tk.Button(
-            action_frame,
-            text="Cập nhật",
-            bg="#3498db",
-            fg="white",
-            command=self.update_table,
-        )
+        self.btn_update = button(action_frame, text="Cập nhật", variant="info", command=self.update_table)
         self.btn_update.pack(side="left", padx=4)
-        self.btn_delete = tk.Button(
-            action_frame, text="Xóa", bg="#e74c3c", fg="white", command=self.delete_table
-        )
+        self.btn_delete = button(action_frame, text="Xóa", variant="danger", command=self.delete_table)
         self.btn_delete.pack(side="left", padx=4)
-        tk.Button(action_frame, text="Làm mới", command=self.reset_form).pack(
-            side="left", padx=4
-        )
+        button(action_frame, text="Làm mới", variant="ghost", command=self.reset_form).pack(side="left", padx=4)
 
         if self.role == "Staff":
             self.name_entry.config(state="disabled")
             self.btn_add.config(state="disabled")
             self.btn_delete.config(state="disabled")
 
-        self.list_frame = tk.Frame(self.frame, bg="white")
-        self.list_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        self.list_frame = tk.Frame(self.frame, bg=COLORS["app_bg"])
+        self.list_frame.pack(fill="both", expand=True, padx=24, pady=(0, 24))
 
     def load_tables(self):
         tables = self.controller.load_tables()
@@ -77,9 +90,9 @@ class TableView:
             tk.Label(
                 self.list_frame,
                 text="Chưa có bàn nào trong hệ thống.",
-                bg="white",
-                fg="#666",
-                font=("Arial", 12),
+                bg=COLORS["app_bg"],
+                fg=COLORS["muted"],
+                font=(FONT_FAMILY, 12),
             ).pack(pady=40)
             return
 
@@ -90,28 +103,41 @@ class TableView:
         tk.Label(
             self.list_frame,
             text=header_text,
-            bg="white",
-            font=("Arial", 12, "bold"),
+            bg=COLORS["app_bg"],
+            fg=COLORS["text"],
+            font=(FONT_FAMILY, 12, "bold"),
         ).pack(anchor="w", pady=(5, 12))
 
-        grid_frame = tk.Frame(self.list_frame, bg="white")
+        grid_frame = tk.Frame(self.list_frame, bg=COLORS["app_bg"])
         grid_frame.pack(fill="both", expand=True)
 
         for index, table in enumerate(tables):
             name = table[1]
             status = table[2]
-            color = "green" if status == "Trống" else "red"
+            is_empty = status == "Trống"
+            color = "#e8f5ed" if is_empty else "#fff0e8"
+            fg = COLORS["success"] if is_empty else COLORS["danger"]
+            icon = "✅" if is_empty else "☕"
 
             btn = tk.Button(
                 grid_frame,
-                text=f"{name}\n({status})",
+                text=f"{icon}  {name}\n{status}",
                 bg=color,
-                width=15,
-                height=3,
+                fg=fg,
+                activebackground=COLORS["border"],
+                activeforeground=fg,
+                relief="flat",
+                bd=0,
+                highlightthickness=1,
+                highlightbackground=COLORS["border"],
+                width=18,
+                height=4,
+                font=(FONT_FAMILY, 11, "bold"),
+                cursor="hand2",
                 command=lambda data=table: self.select_table(data),
             )
 
-            btn.grid(row=index // 4, column=index % 4, padx=10, pady=10)
+            btn.grid(row=index // 4, column=index % 4, padx=10, pady=10, sticky="nsew")
 
     def select_table(self, table):
         table_id, name, status = table

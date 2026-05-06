@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from Config.db import get_connection
+from Views.theme import COLORS, FONT_FAMILY
 
 
 class UserView:
@@ -11,7 +12,7 @@ class UserView:
         self.selected_user_id = None
         self.employee_map = {}
 
-        self.frame = tk.Frame(parent, bg="white")
+        self.frame = tk.Frame(parent, bg=COLORS["app_bg"])
         self.frame.pack(fill="both", expand=True)
 
         self._build_ui()
@@ -22,36 +23,36 @@ class UserView:
         title = tk.Label(
             self.frame,
             text="Quản lý tài khoản & phân quyền",
-            bg="white",
-            fg="#2c3e50",
-            font=("Arial", 15, "bold"),
+            bg=COLORS["app_bg"],
+            fg=COLORS["text"],
+            font=(FONT_FAMILY, 18, "bold"),
         )
         title.pack(anchor="w", padx=16, pady=(12, 4))
 
         description = tk.Label(
             self.frame,
             text="Tạo tài khoản, đổi mật khẩu, phân quyền Admin/Staff và liên kết tài khoản với nhân viên.",
-            bg="white",
-            fg="#7f8c8d",
-            font=("Arial", 10),
+            bg=COLORS["app_bg"],
+            fg=COLORS["muted"],
+            font=(FONT_FAMILY, 10),
         )
         description.pack(anchor="w", padx=16, pady=(0, 8))
 
         form = tk.LabelFrame(
-            self.frame, text="Thông tin tài khoản", bg="white", padx=10, pady=8
+            self.frame, text="Thông tin tài khoản", bg=COLORS["surface"], padx=10, pady=8
         )
         form.pack(fill="x", padx=16, pady=(0, 10))
 
-        tk.Label(form, text="Tên đăng nhập", bg="white").grid(
+        tk.Label(form, text="Tên đăng nhập", bg=COLORS["surface"]).grid(
             row=0, column=0, sticky="w"
         )
-        tk.Label(form, text="Mật khẩu", bg="white").grid(
+        tk.Label(form, text="Mật khẩu", bg=COLORS["surface"]).grid(
             row=0, column=1, sticky="w", padx=(12, 0)
         )
-        tk.Label(form, text="Quyền", bg="white").grid(
+        tk.Label(form, text="Quyền", bg=COLORS["surface"]).grid(
             row=0, column=2, sticky="w", padx=(12, 0)
         )
-        tk.Label(form, text="Nhân viên", bg="white").grid(
+        tk.Label(form, text="Nhân viên", bg=COLORS["surface"]).grid(
             row=0, column=3, sticky="w", padx=(12, 0)
         )
 
@@ -81,27 +82,27 @@ class UserView:
         )
         self.employee_combo.grid(row=1, column=3, padx=(12, 0), pady=4)
 
-        action = tk.Frame(form, bg="white")
+        action = tk.Frame(form, bg=COLORS["surface"])
         action.grid(row=2, column=0, columnspan=4, sticky="w", pady=(8, 0))
         tk.Button(
-            action, text="Thêm", bg="#2ecc71", fg="white", command=self._add_user
+            action, text="Thêm", bg=COLORS["success"], fg="white", command=self._add_user
         ).pack(side="left", padx=(0, 6))
         tk.Button(
-            action, text="Cập nhật", bg="#3498db", fg="white", command=self._update_user
+            action, text="Cập nhật", bg=COLORS["info"], fg="white", command=self._update_user
         ).pack(side="left", padx=6)
         tk.Button(
-            action, text="Xóa", bg="#e74c3c", fg="white", command=self._delete_user
+            action, text="Xóa", bg=COLORS["danger"], fg="white", command=self._delete_user
         ).pack(side="left", padx=6)
         tk.Button(
-            action, text="Làm mới", bg="#95a5a6", fg="white", command=self._refresh
+            action, text="Làm mới", bg=COLORS["muted"], fg="white", command=self._refresh
         ).pack(side="left", padx=6)
 
         note = tk.Label(
             form,
             text="Ghi chú: Khi cập nhật, để trống mật khẩu nếu không muốn đổi mật khẩu hiện tại.",
-            bg="white",
-            fg="#7f8c8d",
-            font=("Arial", 9, "italic"),
+            bg=COLORS["surface"],
+            fg=COLORS["muted"],
+            font=(FONT_FAMILY, 9, "italic"),
         )
         note.grid(row=3, column=0, columnspan=4, sticky="w", pady=(8, 0))
 
