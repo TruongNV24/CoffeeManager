@@ -95,11 +95,28 @@ def create_tables():
     if "IsSynced" not in employee_columns:
         cursor.execute("ALTER TABLE Employees ADD COLUMN IsSynced INTEGER DEFAULT 0")
 
-    # Migration cho DB cũ chưa có cột ProductImage
+    # Migration cho DB cũ chưa có cột CategoryID hoặc ProductImage
     cursor.execute("PRAGMA table_info(Products)")
     product_columns = [col[1] for col in cursor.fetchall()]
+    if "CategoryID" not in product_columns:
+        cursor.execute("ALTER TABLE Products ADD COLUMN CategoryID INTEGER")
     if "ProductImage" not in product_columns:
         cursor.execute("ALTER TABLE Products ADD COLUMN ProductImage TEXT")
+
+    # Seed loại sản phẩm mặc định để form CRUD món luôn có lựa chọn category
+    cursor.execute("SELECT COUNT(*) FROM Categories")
+    if cursor.fetchone()[0] == 0:
+        cursor.executemany(
+            "INSERT INTO Categories (CategoryName) VALUES (?)",
+            [
+                ("Cà phê",),
+                ("Trà",),
+                ("Sinh tố",),
+                ("Nước ép",),
+                ("Bánh ngọt",),
+                ("Khác",),
+            ],
+        )
 
     # 7. Orders (QUAN TRỌNG: Cần đồng bộ để chủ quán xem doanh thu)
     cursor.execute("""
