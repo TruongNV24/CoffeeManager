@@ -71,7 +71,24 @@ class OrderView:
         left = tk.Frame(body, bg=COLORS["surface"], highlightthickness=1, highlightbackground=COLORS["border"])
         left.pack(side="left", fill="both", expand=True, padx=(0, 8))
 
-        tk.Label(left, text="Danh sách món", bg=COLORS["surface"], fg=COLORS["text"], font=(FONT_FAMILY, 14, "bold")).pack(anchor="w", padx=10, pady=8)
+        product_header = tk.Frame(left, bg=COLORS["surface"])
+        product_header.pack(fill="x", padx=10, pady=8)
+        tk.Label(
+            product_header,
+            text="Danh sách món",
+            bg=COLORS["surface"],
+            fg=COLORS["text"],
+            font=(FONT_FAMILY, 14, "bold"),
+        ).pack(side="left")
+        self.product_form_visible = False
+        self.toggle_product_form_button = button(
+            product_header,
+            text="Hiện CRUD món",
+            variant="ghost",
+            command=self.toggle_product_form,
+        )
+        if self.role == "Admin":
+            self.toggle_product_form_button.pack(side="right")
 
         grid_wrap = tk.Frame(left, bg=COLORS["surface"])
         grid_wrap.pack(fill="both", expand=True, padx=10, pady=(0, 10))
@@ -88,7 +105,6 @@ class OrderView:
         self.product_canvas.bind("<Configure>", self._on_product_canvas_resize)
 
         self.product_form = tk.Frame(left, bg=COLORS["surface_alt"], padx=10, pady=10)
-        self.product_form.pack(fill="x", padx=10, pady=(0, 10))
 
         tk.Label(self.product_form, text="Tên món", bg=COLORS["surface_alt"]).grid(row=0, column=0, sticky="w")
         tk.Label(self.product_form, text="Giá", bg=COLORS["surface_alt"]).grid(row=0, column=1, sticky="w")
@@ -133,6 +149,18 @@ class OrderView:
             self.btn_update.config(state="disabled")
             self.btn_delete.config(state="disabled")
             self.product_name_var.set("(Chỉ admin được CRUD món)")
+
+    def toggle_product_form(self):
+        self.set_product_form_visible(not self.product_form_visible)
+
+    def set_product_form_visible(self, visible):
+        self.product_form_visible = visible
+        if visible:
+            self.product_form.pack(fill="x", padx=10, pady=(0, 10))
+            self.toggle_product_form_button.config(text="Ẩn CRUD món")
+        else:
+            self.product_form.pack_forget()
+            self.toggle_product_form_button.config(text="Hiện CRUD món")
 
     def load_categories(self):
         self.categories = get_all_categories()
