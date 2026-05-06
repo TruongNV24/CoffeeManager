@@ -21,20 +21,32 @@ class TableView:
     def build_crud_panel(self):
         header = tk.Frame(self.frame, bg=COLORS["app_bg"])
         header.pack(fill="x", padx=24, pady=(20, 8))
+
+        title_group = tk.Frame(header, bg=COLORS["app_bg"])
+        title_group.pack(side="left", fill="x", expand=True)
         tk.Label(
-            header,
+            title_group,
             text="Sơ đồ bàn",
             bg=COLORS["app_bg"],
             fg=COLORS["text"],
             font=(FONT_FAMILY, 20, "bold"),
         ).pack(anchor="w")
         tk.Label(
-            header,
+            title_group,
             text="Theo dõi trạng thái và cập nhật bàn chỉ với một lần chọn.",
             bg=COLORS["app_bg"],
             fg=COLORS["muted"],
             font=(FONT_FAMILY, 10),
         ).pack(anchor="w", pady=(2, 0))
+
+        self.crud_panel_visible = False
+        self.crud_toggle_button = button(
+            header,
+            text="⚙️  Mở CRUD",
+            variant="dark",
+            command=self.toggle_crud_panel,
+        )
+        self.crud_toggle_button.pack(side="right", anchor="n", padx=(16, 0))
 
         form_frame = tk.Frame(
             self.frame,
@@ -44,7 +56,7 @@ class TableView:
             highlightthickness=1,
             highlightbackground=COLORS["border"],
         )
-        form_frame.pack(fill="x", padx=24, pady=(8, 16))
+        self.crud_panel = form_frame
 
         tk.Label(form_frame, text="Tên bàn", bg=COLORS["surface"], fg=COLORS["muted"], font=(FONT_FAMILY, 10, "bold")).grid(
             row=0, column=0, sticky="w", padx=(0, 8)
@@ -79,6 +91,18 @@ class TableView:
 
         self.list_frame = tk.Frame(self.frame, bg=COLORS["app_bg"])
         self.list_frame.pack(fill="both", expand=True, padx=24, pady=(0, 24))
+
+
+    def toggle_crud_panel(self):
+        if self.crud_panel_visible:
+            self.crud_panel.pack_forget()
+            self.crud_toggle_button.config(text="⚙️  Mở CRUD")
+            self.crud_panel_visible = False
+            return
+
+        self.crud_panel.pack(fill="x", padx=24, pady=(8, 16), before=self.list_frame)
+        self.crud_toggle_button.config(text="Ẩn CRUD")
+        self.crud_panel_visible = True
 
     def load_tables(self):
         tables = self.controller.load_tables()
