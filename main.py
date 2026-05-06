@@ -6,6 +6,7 @@ from Views.auth import AuthView
 from Views.content import ContentView
 from Views.header import HeaderView
 from Views.menu import create_menu
+from Views.theme import configure_root
 
 
 def ensure_default_admin():
@@ -27,8 +28,9 @@ class CoffeeManagerApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Coffee Manager - Hệ thống quản lý quán Cà phê")
-        self.root.geometry("1100x700")
-        self.root.configure(bg="#0a0c16")
+        self.root.geometry("1180x760")
+        self.root.minsize(1050, 680)
+        configure_root(self.root)
 
         self.auth_view = None
         self.current_views = []
@@ -51,7 +53,8 @@ class CoffeeManagerApp:
         controller = MainController(content_view, role=role)
         create_menu(self.root, controller, role=role)
         content_view.show_text(
-            f"Xin chào {username} ({role})!"
+            f"Xin chào {username}!",
+            subtitle=f"Bạn đang đăng nhập với quyền {role}. Chọn chức năng ở menu bên trái để bắt đầu phục vụ khách hàng."
         )
 
 

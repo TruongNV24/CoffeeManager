@@ -20,6 +20,7 @@ from Models.product import (
     update_product,
 )
 from Utils.image_handler import ImageHandler
+from Views.theme import COLORS, FONT_FAMILY, button, entry
 
 
 class OrderView:
@@ -34,7 +35,7 @@ class OrderView:
         self.project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.image_handler = ImageHandler(self.project_root)
 
-        self.frame = tk.Frame(parent, bg="white")
+        self.frame = tk.Frame(parent, bg=COLORS["app_bg"])
         self.frame.pack(fill="both", expand=True)
 
         self._build_ui()
@@ -42,79 +43,79 @@ class OrderView:
         self.load_products()
 
     def _build_ui(self):
-        top = tk.Frame(self.frame, bg="white")
-        top.pack(fill="x", padx=14, pady=10)
+        top = tk.Frame(self.frame, bg=COLORS["surface"], padx=16, pady=14, highlightthickness=1, highlightbackground=COLORS["border"])
+        top.pack(fill="x", padx=22, pady=(20, 12))
 
-        tk.Label(top, text="Bàn:", bg="white", font=("Arial", 11, "bold")).pack(side="left")
+        tk.Label(top, text="Bàn:", bg=COLORS["surface"], fg=COLORS["text"], font=(FONT_FAMILY, 11, "bold")).pack(side="left")
         self.table_var = tk.StringVar()
         self.table_var.trace_add("write", self._on_table_change)
         self.table_menu = tk.OptionMenu(top, self.table_var, "")
         self.table_menu.config(width=18)
         self.table_menu.pack(side="left", padx=6)
 
-        tk.Label(top, text="Số lượng:", bg="white", font=("Arial", 11, "bold")).pack(side="left", padx=(8, 0))
+        tk.Label(top, text="Số lượng:", bg=COLORS["surface"], fg=COLORS["text"], font=(FONT_FAMILY, 11, "bold")).pack(side="left", padx=(8, 0))
         self.qty_var = tk.StringVar(value="1")
-        tk.Entry(top, textvariable=self.qty_var, width=5).pack(side="left", padx=6)
+        entry(top, textvariable=self.qty_var, width=5).pack(side="left", padx=6, ipady=5)
 
-        tk.Button(top, text="Thêm vào order", bg="#2ecc71", fg="white", command=self.add_to_order).pack(side="left", padx=8)
-        tk.Button(top, text="Xem order", command=self.show_current_order).pack(side="left", padx=4)
-        tk.Button(top, text="Xuất hóa đơn & Thanh toán", bg="#f39c12", fg="white", command=self.export_invoice).pack(side="left", padx=4)
+        button(top, text="Thêm vào order", variant="success", command=self.add_to_order).pack(side="left", padx=8)
+        button(top, text="Xem order", variant="ghost", command=self.show_current_order).pack(side="left", padx=4)
+        button(top, text="Xuất hóa đơn & Thanh toán", variant="warning", command=self.export_invoice).pack(side="left", padx=4)
 
-        body = tk.Frame(self.frame, bg="white")
-        body.pack(fill="both", expand=True, padx=14, pady=(0, 14))
+        body = tk.Frame(self.frame, bg=COLORS["app_bg"])
+        body.pack(fill="both", expand=True, padx=22, pady=(0, 22))
 
-        left = tk.Frame(body, bg="#f8f8f8", bd=1, relief="solid")
+        left = tk.Frame(body, bg=COLORS["surface"], highlightthickness=1, highlightbackground=COLORS["border"])
         left.pack(side="left", fill="both", expand=True, padx=(0, 8))
 
-        tk.Label(left, text="Danh sách món", bg="#f8f8f8", font=("Arial", 12, "bold")).pack(anchor="w", padx=10, pady=8)
+        tk.Label(left, text="Danh sách món", bg=COLORS["surface"], fg=COLORS["text"], font=(FONT_FAMILY, 14, "bold")).pack(anchor="w", padx=10, pady=8)
 
-        grid_wrap = tk.Frame(left, bg="#f8f8f8")
+        grid_wrap = tk.Frame(left, bg=COLORS["surface"])
         grid_wrap.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
-        self.product_canvas = tk.Canvas(grid_wrap, bg="#f8f8f8", highlightthickness=0)
+        self.product_canvas = tk.Canvas(grid_wrap, bg=COLORS["surface"], highlightthickness=0)
         self.product_scrollbar = tk.Scrollbar(grid_wrap, orient="vertical", command=self.product_canvas.yview)
         self.product_canvas.configure(yscrollcommand=self.product_scrollbar.set)
         self.product_canvas.pack(side="left", fill="both", expand=True)
         self.product_scrollbar.pack(side="right", fill="y")
 
-        self.product_grid = tk.Frame(self.product_canvas, bg="#f8f8f8")
+        self.product_grid = tk.Frame(self.product_canvas, bg=COLORS["surface"])
         self.product_canvas_window = self.product_canvas.create_window((0, 0), window=self.product_grid, anchor="nw")
         self.product_grid.bind("<Configure>", lambda _e: self.product_canvas.configure(scrollregion=self.product_canvas.bbox("all")))
         self.product_canvas.bind("<Configure>", self._on_product_canvas_resize)
 
-        self.product_form = tk.Frame(left, bg="#f8f8f8")
+        self.product_form = tk.Frame(left, bg=COLORS["surface_alt"], padx=10, pady=10)
         self.product_form.pack(fill="x", padx=10, pady=(0, 10))
 
-        tk.Label(self.product_form, text="Tên món", bg="#f8f8f8").grid(row=0, column=0, sticky="w")
-        tk.Label(self.product_form, text="Giá", bg="#f8f8f8").grid(row=0, column=1, sticky="w")
-        tk.Label(self.product_form, text="Ảnh", bg="#f8f8f8").grid(row=2, column=0, sticky="w", pady=(4, 0))
+        tk.Label(self.product_form, text="Tên món", bg=COLORS["surface_alt"]).grid(row=0, column=0, sticky="w")
+        tk.Label(self.product_form, text="Giá", bg=COLORS["surface_alt"]).grid(row=0, column=1, sticky="w")
+        tk.Label(self.product_form, text="Ảnh", bg=COLORS["surface_alt"]).grid(row=2, column=0, sticky="w", pady=(4, 0))
         self.product_name_var = tk.StringVar()
         self.product_price_var = tk.StringVar()
         self.product_status_var = tk.StringVar(value="Còn bán")
         self.product_image_var = tk.StringVar()
-        tk.Entry(self.product_form, textvariable=self.product_name_var, width=22).grid(row=1, column=0, padx=(0, 8), pady=4)
-        tk.Entry(self.product_form, textvariable=self.product_price_var, width=10).grid(row=1, column=1, pady=4)
+        entry(self.product_form, textvariable=self.product_name_var, width=22).grid(row=1, column=0, padx=(0, 8), pady=4)
+        entry(self.product_form, textvariable=self.product_price_var, width=10).grid(row=1, column=1, pady=4)
         tk.OptionMenu(self.product_form, self.product_status_var, "Còn bán", "Hết món").grid(row=1, column=2, padx=8)
-        tk.Entry(self.product_form, textvariable=self.product_image_var, width=26).grid(row=3, column=0, columnspan=2, sticky="we")
-        tk.Button(self.product_form, text="Chọn ảnh", command=self.pick_product_image).grid(row=3, column=2, padx=8)
+        entry(self.product_form, textvariable=self.product_image_var, width=26).grid(row=3, column=0, columnspan=2, sticky="we")
+        button(self.product_form, text="Chọn ảnh", variant="ghost", command=self.pick_product_image).grid(row=3, column=2, padx=8)
 
-        actions = tk.Frame(self.product_form, bg="#f8f8f8")
+        actions = tk.Frame(self.product_form, bg=COLORS["surface_alt"])
         actions.grid(row=1, column=3)
-        self.btn_add = tk.Button(actions, text="Thêm", command=self.add_product)
+        self.btn_add = button(actions, text="Thêm", variant="success", command=self.add_product)
         self.btn_add.pack(side="left", padx=2)
-        self.btn_update = tk.Button(actions, text="Sửa", command=self.update_product_info)
+        self.btn_update = button(actions, text="Sửa", variant="info", command=self.update_product_info)
         self.btn_update.pack(side="left", padx=2)
-        self.btn_delete = tk.Button(actions, text="Xóa", command=self.delete_product_info)
+        self.btn_delete = button(actions, text="Xóa", variant="danger", command=self.delete_product_info)
         self.btn_delete.pack(side="left", padx=2)
-        self.image_preview_label = tk.Label(self.product_form, text="(Chưa có ảnh)", bg="#f8f8f8", fg="#666")
+        self.image_preview_label = tk.Label(self.product_form, text="(Chưa có ảnh)", bg=COLORS["surface_alt"], fg="#666")
         self.image_preview_label.grid(row=3, column=3, padx=8)
 
-        right = tk.Frame(body, bg="#eef6ff", bd=1, relief="solid", width=360)
+        right = tk.Frame(body, bg="#fff7ed", highlightthickness=1, highlightbackground=COLORS["border"], width=360)
         right.pack(side="right", fill="both")
         right.pack_propagate(False)
 
-        tk.Label(right, text="Chi tiết order", bg="#eef6ff", font=("Arial", 12, "bold")).pack(anchor="w", padx=10, pady=8)
-        self.order_text = tk.Text(right, height=26, bg="#eef6ff", relief="flat", font=("Consolas", 10))
+        tk.Label(right, text="Chi tiết order", bg="#fff7ed", fg=COLORS["text"], font=(FONT_FAMILY, 14, "bold")).pack(anchor="w", padx=10, pady=8)
+        self.order_text = tk.Text(right, height=26, bg="#fff7ed", fg=COLORS["text"], relief="flat", font=("Consolas", 10))
         self.order_text.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
         if self.role != "Admin":
@@ -176,7 +177,7 @@ class OrderView:
             column = idx % columns
             card = tk.Frame(
                 self.product_grid,
-                bg="white",
+                bg=COLORS["white"],
                 bd=1,
                 relief="solid",
                 width=card_width,
@@ -189,19 +190,19 @@ class OrderView:
             card.grid_propagate(False)
 
             image = self.image_handler.get_image(product[4], CARD_IMAGE_SIZE, cache_group="cards")
-            image_box = tk.Frame(card, bg="white", width=CARD_IMAGE_SIZE[0], height=CARD_IMAGE_SIZE[1])
+            image_box = tk.Frame(card, bg=COLORS["white"], width=CARD_IMAGE_SIZE[0], height=CARD_IMAGE_SIZE[1])
             image_box.pack(pady=(0, 8))
             image_box.pack_propagate(False)
 
-            image_label = tk.Label(image_box, image=image, bg="white")
+            image_label = tk.Label(image_box, image=image, bg=COLORS["white"])
             image_label.image = image
             image_label.place(relx=0.5, rely=0.5, anchor="center")
 
             name_label = tk.Label(
                 card,
                 text=product[1],
-                bg="white",
-                font=("Arial", 10, "bold"),
+                bg=COLORS["white"],
+                font=(FONT_FAMILY, 10, "bold"),
                 wraplength=116,
                 justify="center",
                 height=2,
@@ -211,16 +212,16 @@ class OrderView:
             price_label = tk.Label(
                 card,
                 text=f"{product[2]:,.0f}đ",
-                bg="white",
-                fg="#1b8dd8",
-                font=("Arial", 10, "bold"),
+                bg=COLORS["white"],
+                fg=COLORS["primary_dark"],
+                font=(FONT_FAMILY, 10, "bold"),
             )
             price_label.pack(pady=(4, 0))
 
             status_text = "HẾT MÓN" if product[3] == "Hết món" else ""
-            status_bg = "#fce6e6" if product[3] == "Hết món" else "white"
+            status_bg = "#fee2e2" if product[3] == "Hết món" else COLORS["white"]
             status_fg = "#c0392b" if product[3] == "Hết món" else "white"
-            sold_out = tk.Label(card, text=status_text, bg=status_bg, fg=status_fg, font=("Arial", 9, "bold"), height=1)
+            sold_out = tk.Label(card, text=status_text, bg=status_bg, fg=status_fg, font=(FONT_FAMILY, 9, "bold"), height=1)
             sold_out.pack(pady=(8, 0), fill="x")
 
             self._bind_card_click(card, product[0])
@@ -243,9 +244,9 @@ class OrderView:
     def _refresh_selected_card(self):
         for pid, card in self.product_cards.items():
             if pid == self.selected_product_id:
-                card.configure(bg="#e9f4ff", bd=2, relief="solid")
+                card.configure(bg="#fff0d9", bd=2, relief="solid")
             else:
-                card.configure(bg="white", bd=1, relief="solid")
+                card.configure(bg=COLORS["white"], bd=1, relief="solid")
 
 
     def _selected_table_id(self):

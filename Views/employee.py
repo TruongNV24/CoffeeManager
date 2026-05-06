@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from Config.db import get_connection
+from Views.theme import COLORS, FONT_FAMILY
 
 
 class EmployeeView:
@@ -9,7 +10,7 @@ class EmployeeView:
         self.parent = parent
         self.selected_employee_id = None
 
-        self.frame = tk.Frame(parent, bg="white")
+        self.frame = tk.Frame(parent, bg=COLORS["app_bg"])
         self.frame.pack(fill="both", expand=True)
 
         self._build_ui()
@@ -21,9 +22,9 @@ class EmployeeView:
         title = tk.Label(
             self.frame,
             text="Quản lý nhân viên",
-            bg="white",
-            fg="#2c3e50",
-            font=("Arial", 15, "bold"),
+            bg=COLORS["app_bg"],
+            fg=COLORS["text"],
+            font=(FONT_FAMILY, 18, "bold"),
         )
         title.pack(anchor="w", padx=16, pady=(12, 8))
 
@@ -33,15 +34,15 @@ class EmployeeView:
         self._build_employee_tab()
 
     def _build_employee_tab(self):
-        tab = tk.Frame(self.notebook, bg="white")
+        tab = tk.Frame(self.notebook, bg=COLORS["surface"])
         self.notebook.add(tab, text="Nhân viên")
 
-        form = tk.Frame(tab, bg="white")
+        form = tk.Frame(tab, bg=COLORS["surface"])
         form.pack(fill="x", padx=8, pady=8)
 
-        tk.Label(form, text="Họ tên", bg="white").grid(row=0, column=0, sticky="w")
-        tk.Label(form, text="SĐT", bg="white").grid(row=0, column=1, sticky="w", padx=(12, 0))
-        tk.Label(form, text="Vị trí", bg="white").grid(row=0, column=2, sticky="w", padx=(12, 0))
+        tk.Label(form, text="Họ tên", bg=COLORS["surface"]).grid(row=0, column=0, sticky="w")
+        tk.Label(form, text="SĐT", bg=COLORS["surface"]).grid(row=0, column=1, sticky="w", padx=(12, 0))
+        tk.Label(form, text="Vị trí", bg=COLORS["surface"]).grid(row=0, column=2, sticky="w", padx=(12, 0))
 
         self.emp_name = tk.StringVar()
         self.emp_phone = tk.StringVar()
@@ -52,11 +53,11 @@ class EmployeeView:
         self.position_combo = ttk.Combobox(form, textvariable=self.emp_position, width=18, state="readonly")
         self.position_combo.grid(row=1, column=2, padx=(12, 0), pady=4)
 
-        action = tk.Frame(form, bg="white")
+        action = tk.Frame(form, bg=COLORS["surface"])
         action.grid(row=1, column=3, padx=16)
-        tk.Button(action, text="Thêm", bg="#2ecc71", fg="white", command=self._add_employee).pack(side="left", padx=3)
-        tk.Button(action, text="Cập nhật", bg="#3498db", fg="white", command=self._update_employee).pack(side="left", padx=3)
-        tk.Button(action, text="Xóa", bg="#e74c3c", fg="white", command=self._delete_employee).pack(side="left", padx=3)
+        tk.Button(action, text="Thêm", bg=COLORS["success"], fg="white", command=self._add_employee).pack(side="left", padx=3)
+        tk.Button(action, text="Cập nhật", bg=COLORS["info"], fg="white", command=self._update_employee).pack(side="left", padx=3)
+        tk.Button(action, text="Xóa", bg=COLORS["danger"], fg="white", command=self._delete_employee).pack(side="left", padx=3)
 
         self.employee_tree = ttk.Treeview(tab, columns=("id", "name", "phone", "position"), show="headings", height=14)
         for col, text, width in [
@@ -71,16 +72,16 @@ class EmployeeView:
         self.employee_tree.bind("<<TreeviewSelect>>", self._on_employee_select)
 
     def _build_shift_tab(self):
-        tab = tk.Frame(self.notebook, bg="white")
+        tab = tk.Frame(self.notebook, bg=COLORS["surface"])
         self.notebook.add(tab, text="Ca làm")
 
-        form = tk.Frame(tab, bg="white")
+        form = tk.Frame(tab, bg=COLORS["surface"])
         form.pack(fill="x", padx=8, pady=8)
 
-        tk.Label(form, text="Nhân viên (ID)", bg="white").grid(row=0, column=0, sticky="w")
-        tk.Label(form, text="Ngày (YYYY-MM-DD)", bg="white").grid(row=0, column=1, sticky="w", padx=(12, 0))
-        tk.Label(form, text="Giờ bắt đầu", bg="white").grid(row=0, column=2, sticky="w", padx=(12, 0))
-        tk.Label(form, text="Giờ kết thúc", bg="white").grid(row=0, column=3, sticky="w", padx=(12, 0))
+        tk.Label(form, text="Nhân viên (ID)", bg=COLORS["surface"]).grid(row=0, column=0, sticky="w")
+        tk.Label(form, text="Ngày (YYYY-MM-DD)", bg=COLORS["surface"]).grid(row=0, column=1, sticky="w", padx=(12, 0))
+        tk.Label(form, text="Giờ bắt đầu", bg=COLORS["surface"]).grid(row=0, column=2, sticky="w", padx=(12, 0))
+        tk.Label(form, text="Giờ kết thúc", bg=COLORS["surface"]).grid(row=0, column=3, sticky="w", padx=(12, 0))
 
         self.shift_emp_id = tk.StringVar()
         self.shift_date = tk.StringVar()
@@ -91,7 +92,7 @@ class EmployeeView:
         tk.Entry(form, textvariable=self.shift_date, width=16).grid(row=1, column=1, padx=(12, 0), pady=4)
         tk.Entry(form, textvariable=self.shift_start, width=10).grid(row=1, column=2, padx=(12, 0), pady=4)
         tk.Entry(form, textvariable=self.shift_end, width=10).grid(row=1, column=3, padx=(12, 0), pady=4)
-        tk.Button(form, text="Tạo ca", bg="#16a085", fg="white", command=self._add_shift).grid(row=1, column=4, padx=16)
+        tk.Button(form, text="Tạo ca", bg=COLORS["success"], fg="white", command=self._add_shift).grid(row=1, column=4, padx=16)
 
         self.shift_tree = ttk.Treeview(tab, columns=("id", "emp", "date", "start", "end"), show="headings", height=14)
         for col, text, width in [
@@ -106,21 +107,21 @@ class EmployeeView:
         self.shift_tree.pack(fill="both", expand=True, padx=8, pady=(0, 8))
 
     def _build_attendance_tab(self):
-        tab = tk.Frame(self.notebook, bg="white")
+        tab = tk.Frame(self.notebook, bg=COLORS["surface"])
         self.notebook.add(tab, text="Chấm công")
 
-        form = tk.Frame(tab, bg="white")
+        form = tk.Frame(tab, bg=COLORS["surface"])
         form.pack(fill="x", padx=8, pady=8)
 
-        tk.Label(form, text="ShiftID", bg="white").grid(row=0, column=0, sticky="w")
-        tk.Label(form, text="Trạng thái", bg="white").grid(row=0, column=1, sticky="w", padx=(12, 0))
+        tk.Label(form, text="ShiftID", bg=COLORS["surface"]).grid(row=0, column=0, sticky="w")
+        tk.Label(form, text="Trạng thái", bg=COLORS["surface"]).grid(row=0, column=1, sticky="w", padx=(12, 0))
 
         self.att_shift_id = tk.StringVar()
         self.att_status = tk.StringVar(value="Có mặt")
 
         tk.Entry(form, textvariable=self.att_shift_id, width=12).grid(row=1, column=0, pady=4)
         tk.OptionMenu(form, self.att_status, "Có mặt", "Đi trễ", "Vắng").grid(row=1, column=1, padx=(12, 0), pady=4)
-        tk.Button(form, text="Chấm công", bg="#8e44ad", fg="white", command=self._mark_attendance).grid(row=1, column=2, padx=16)
+        tk.Button(form, text="Chấm công", bg=COLORS["primary_dark"], fg="white", command=self._mark_attendance).grid(row=1, column=2, padx=16)
 
         self.attendance_tree = ttk.Treeview(tab, columns=("id", "shift", "checkin", "status"), show="headings", height=14)
         for col, text, width in [
