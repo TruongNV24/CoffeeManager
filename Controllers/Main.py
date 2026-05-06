@@ -3,6 +3,7 @@ from Views.order import OrderView
 from Views.table import TableView
 from Views.employee import EmployeeView
 from Views.salary import SalaryView
+from Views.user import UserView
 
 
 class MainController:
@@ -72,7 +73,8 @@ class MainController:
             self._deny_access()
             return
 
-        self.content_view.show_text("🔐 Quản lý Tài khoản & Phân quyền")
+        self.content_view.clear()
+        UserView(self.content_view.frame)
 
     def create_order(self, table_id, employee_id, total_amount):
         conn = get_connection()
