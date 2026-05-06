@@ -16,6 +16,7 @@ from Models.order import (
 from Models.product import (
     create_product,
     delete_product,
+    get_all_categories,
     get_all_products,
     update_product,
 )
@@ -32,6 +33,8 @@ class OrderView:
         self.current_image_preview = None
         self.product_cards = {}
         self.product_image_labels = {}
+        self.categories = []
+        self.category_placeholder = "Chưa chọn loại"
         self.project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.image_handler = ImageHandler(self.project_root)
 
@@ -39,6 +42,7 @@ class OrderView:
         self.frame.pack(fill="both", expand=True)
 
         self._build_ui()
+        self.load_categories()
         self.load_tables()
         self.load_products()
 
@@ -88,19 +92,25 @@ class OrderView:
 
         tk.Label(self.product_form, text="Tên món", bg=COLORS["surface_alt"]).grid(row=0, column=0, sticky="w")
         tk.Label(self.product_form, text="Giá", bg=COLORS["surface_alt"]).grid(row=0, column=1, sticky="w")
+        tk.Label(self.product_form, text="Loại sản phẩm", bg=COLORS["surface_alt"]).grid(row=0, column=2, sticky="w")
+        tk.Label(self.product_form, text="Trạng thái", bg=COLORS["surface_alt"]).grid(row=0, column=3, sticky="w")
         tk.Label(self.product_form, text="Ảnh", bg=COLORS["surface_alt"]).grid(row=2, column=0, sticky="w", pady=(4, 0))
         self.product_name_var = tk.StringVar()
         self.product_price_var = tk.StringVar()
+        self.product_category_var = tk.StringVar(value=self.category_placeholder)
         self.product_status_var = tk.StringVar(value="Còn bán")
         self.product_image_var = tk.StringVar()
-        entry(self.product_form, textvariable=self.product_name_var, width=22).grid(row=1, column=0, padx=(0, 8), pady=4)
-        entry(self.product_form, textvariable=self.product_price_var, width=10).grid(row=1, column=1, pady=4)
-        tk.OptionMenu(self.product_form, self.product_status_var, "Còn bán", "Hết món").grid(row=1, column=2, padx=8)
-        entry(self.product_form, textvariable=self.product_image_var, width=26).grid(row=3, column=0, columnspan=2, sticky="we")
-        button(self.product_form, text="Chọn ảnh", variant="ghost", command=self.pick_product_image).grid(row=3, column=2, padx=8)
+        entry(self.product_form, textvariable=self.product_name_var, width=20).grid(row=1, column=0, padx=(0, 8), pady=4)
+        entry(self.product_form, textvariable=self.product_price_var, width=10).grid(row=1, column=1, padx=(0, 8), pady=4)
+        self.product_category_menu = tk.OptionMenu(self.product_form, self.product_category_var, self.category_placeholder)
+        self.product_category_menu.config(width=16)
+        self.product_category_menu.grid(row=1, column=2, padx=(0, 8), pady=4, sticky="we")
+        tk.OptionMenu(self.product_form, self.product_status_var, "Còn bán", "Hết món").grid(row=1, column=3, padx=(0, 8), pady=4)
+        entry(self.product_form, textvariable=self.product_image_var, width=34).grid(row=3, column=0, columnspan=3, sticky="we")
+        button(self.product_form, text="Chọn ảnh", variant="ghost", command=self.pick_product_image).grid(row=3, column=3, padx=(0, 8))
 
         actions = tk.Frame(self.product_form, bg=COLORS["surface_alt"])
-        actions.grid(row=1, column=3)
+        actions.grid(row=1, column=4)
         self.btn_add = button(actions, text="Thêm", variant="success", command=self.add_product)
         self.btn_add.pack(side="left", padx=2)
         self.btn_update = button(actions, text="Sửa", variant="info", command=self.update_product_info)
@@ -108,7 +118,7 @@ class OrderView:
         self.btn_delete = button(actions, text="Xóa", variant="danger", command=self.delete_product_info)
         self.btn_delete.pack(side="left", padx=2)
         self.image_preview_label = tk.Label(self.product_form, text="(Chưa có ảnh)", bg=COLORS["surface_alt"], fg="#666")
-        self.image_preview_label.grid(row=3, column=3, padx=8)
+        self.image_preview_label.grid(row=3, column=4, padx=8)
 
         right = tk.Frame(body, bg="#fff7ed", highlightthickness=1, highlightbackground=COLORS["border"], width=360)
         right.pack(side="right", fill="both")
@@ -123,6 +133,30 @@ class OrderView:
             self.btn_update.config(state="disabled")
             self.btn_delete.config(state="disabled")
             self.product_name_var.set("(Chỉ admin được CRUD món)")
+
+    def load_categories(self):
+        self.categories = get_all_categories()
+        menu = self.product_category_menu["menu"]
+        menu.delete(0, "end")
+        menu.add_command(
+            label=self.category_placeholder,
+            command=lambda: self.product_category_var.set(self.category_placeholder),
+        )
+
+        for category_id, category_name in self.categories:
+            label = self._category_label(category_id, category_name)
+            menu.add_command(label=label, command=lambda value=label: self.product_category_var.set(value))
+
+        self.product_category_var.set(self.category_placeholder)
+
+    def _category_label(self, category_id, category_name):
+        return f"{category_id} - {category_name}"
+
+    def _selected_category_id(self):
+        raw = self.product_category_var.get().strip()
+        if not raw or raw == self.category_placeholder:
+            return None
+        return int(raw.split("-")[0].strip())
 
     def load_tables(self):
         conn = get_connection()
@@ -156,6 +190,13 @@ class OrderView:
         self.product_name_var.set(product[1])
         self.product_price_var.set(str(product[2]))
         self.product_status_var.set(product[3])
+        category_id = product[5] if len(product) > 5 else None
+        category_name = product[6] if len(product) > 6 else None
+        self.product_category_var.set(
+            self._category_label(category_id, category_name)
+            if category_id and category_name
+            else self.category_placeholder
+        )
         self.product_image_var.set(product[4] or "")
         self.refresh_image_preview(product[4])
         self._refresh_selected_card()
@@ -181,7 +222,7 @@ class OrderView:
                 bd=1,
                 relief="solid",
                 width=card_width,
-                height=180,
+                height=200,
                 cursor="hand2",
                 padx=8,
                 pady=8,
@@ -218,6 +259,17 @@ class OrderView:
             )
             price_label.pack(pady=(4, 0))
 
+            category_label = tk.Label(
+                card,
+                text=product[6] or "Chưa phân loại",
+                bg=COLORS["white"],
+                fg=COLORS["muted"],
+                font=(FONT_FAMILY, 9),
+                wraplength=116,
+                justify="center",
+            )
+            category_label.pack(pady=(2, 0), fill="x")
+
             status_text = "HẾT MÓN" if product[3] == "Hết món" else ""
             status_bg = "#fee2e2" if product[3] == "Hết món" else COLORS["white"]
             status_fg = "#c0392b" if product[3] == "Hết món" else "white"
@@ -228,6 +280,7 @@ class OrderView:
             self._bind_card_click(image_label, product[0])
             self._bind_card_click(name_label, product[0])
             self._bind_card_click(price_label, product[0])
+            self._bind_card_click(category_label, product[0])
             self.product_cards[product[0]] = card
             self.product_image_labels[product[0]] = image_label
 
@@ -272,6 +325,10 @@ class OrderView:
             return
         name = self.product_name_var.get().strip()
         status = self.product_status_var.get()
+        category_id = self._selected_category_id()
+        if not category_id:
+            messagebox.showwarning("Thiếu dữ liệu", "Vui lòng chọn loại sản phẩm")
+            return
         try:
             price = float(self.product_price_var.get().strip())
         except ValueError:
@@ -280,7 +337,13 @@ class OrderView:
         if not name:
             messagebox.showwarning("Thiếu dữ liệu", "Vui lòng nhập tên món")
             return
-        create_product(name, price, status, self.product_image_var.get().strip() or None)
+        create_product(
+            name,
+            price,
+            status,
+            self.product_image_var.get().strip() or None,
+            category_id,
+        )
         self.load_products()
 
     def update_product_info(self):
@@ -288,6 +351,10 @@ class OrderView:
             return
         name = self.product_name_var.get().strip()
         status = self.product_status_var.get()
+        category_id = self._selected_category_id()
+        if not category_id:
+            messagebox.showwarning("Thiếu dữ liệu", "Vui lòng chọn loại sản phẩm")
+            return
         try:
             price = float(self.product_price_var.get().strip())
         except ValueError:
@@ -299,6 +366,7 @@ class OrderView:
             price,
             status,
             self.product_image_var.get().strip() or None,
+            category_id,
         )
         self.load_products()
 

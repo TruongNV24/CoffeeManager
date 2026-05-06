@@ -3,14 +3,14 @@ import sqlite3
 from Config.db import get_connection
 
 
-def get_all_products():
+def get_all_categories():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT ProductID, ProductName, Price, Status, ProductImage
-        FROM Products
-        ORDER BY ProductID DESC
+        SELECT CategoryID, CategoryName
+        FROM Categories
+        ORDER BY CategoryName COLLATE NOCASE
         """
     )
     rows = cursor.fetchall()
@@ -18,27 +18,53 @@ def get_all_products():
     return rows
 
 
-def create_product(name, price, status="Còn bán", image_path=None):
+def get_all_products():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO Products (ProductName, Price, Status, ProductImage) VALUES (?, ?, ?, ?)",
-        (name, price, status, image_path),
+        """
+        SELECT
+            p.ProductID,
+            p.ProductName,
+            p.Price,
+            p.Status,
+            p.ProductImage,
+            p.CategoryID,
+            c.CategoryName
+        FROM Products p
+        LEFT JOIN Categories c ON c.CategoryID = p.CategoryID
+        ORDER BY p.ProductID DESC
+        """
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
+def create_product(name, price, status="Còn bán", image_path=None, category_id=None):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT INTO Products (ProductName, CategoryID, Price, Status, ProductImage)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (name, category_id, price, status, image_path),
     )
     conn.commit()
     conn.close()
 
 
-def update_product(product_id, name, price, status, image_path=None):
+def update_product(product_id, name, price, status, image_path=None, category_id=None):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
         """
         UPDATE Products
-        SET ProductName = ?, Price = ?, Status = ?, ProductImage = ?
+        SET ProductName = ?, CategoryID = ?, Price = ?, Status = ?, ProductImage = ?
         WHERE ProductID = ?
         """,
-        (name, price, status, image_path, product_id),
+        (name, category_id, price, status, image_path, product_id),
     )
     conn.commit()
     conn.close()
