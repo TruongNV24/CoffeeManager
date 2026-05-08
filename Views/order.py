@@ -35,6 +35,7 @@ class OrderView:
         self.product_cards = {}
         self.current_order_details = []
         self.product_image_labels = {}
+        self.card_widgets = {}
         self.categories = []
         self.category_placeholder = "Chưa chọn loại"
         self.table_label_map = {}
@@ -253,6 +254,7 @@ class OrderView:
         self.product_cards = {}
         self.current_order_details = []
         self.product_image_labels = {}
+        self.card_widgets = {}
         card_width = 140
         columns = 4
 
@@ -316,6 +318,7 @@ class OrderView:
             )
             category_label.pack(pady=(2, 0), fill="x")
 
+            sold_out = None
             if product[3] == "Hết món":
                 sold_out = tk.Label(
                     card,
@@ -327,19 +330,44 @@ class OrderView:
                 )
                 sold_out.pack(pady=(8, 0), fill="x")
 
-            self._bind_card_click(card, product[0])
-            self._bind_card_click(image_label, product[0])
-            self._bind_card_click(name_label, product[0])
-            self._bind_card_click(price_label, product[0])
-            self._bind_card_click(category_label, product[0])
+            clickable_widgets = [card, image_box, image_label, name_label, price_label, category_label]
+            if sold_out:
+                clickable_widgets.append(sold_out)
+
+            for widget in clickable_widgets:
+                self._bind_card_click(widget, product[0])
             self.product_cards[product[0]] = card
             self.product_image_labels[product[0]] = image_label
+            self.card_widgets[product[0]] = [card, image_box, name_label, price_label, category_label]
 
         self._refresh_selected_card()
         self.product_canvas.configure(scrollregion=self.product_canvas.bbox("all"))
 
     def _bind_card_click(self, widget, product_id):
-        widget.bind("<Button-1>", lambda _e, pid=product_id: self.select_product_by_id(pid))
+        widget.bind("<ButtonPress-1>", lambda _e, pid=product_id: self._set_pressed_card(pid))
+        widget.bind("<ButtonRelease-1>", lambda _e, pid=product_id: self.select_product_by_id(pid))
+
+    def _set_pressed_card(self, product_id):
+        for pid, card in self.product_cards.items():
+            if pid == product_id:
+                bg_color = "#ffe7bf"
+                border_color = COLORS["accent"]
+            elif pid == self.selected_product_id:
+                bg_color = "#fff0d9"
+                border_color = COLORS["accent"]
+            elif pid == self.last_added_product_id:
+                bg_color = "#fff6c9"
+                border_color = "#f59e0b"
+            else:
+                bg_color = COLORS["white"]
+                border_color = COLORS["border"]
+
+            card.configure(bg=bg_color, highlightbackground=border_color, highlightcolor=border_color)
+            for widget in self.card_widgets.get(pid, []):
+                if isinstance(widget, tk.Frame):
+                    widget.configure(bg=bg_color)
+                elif isinstance(widget, tk.Label):
+                    widget.configure(bg=bg_color)
 
     def select_product_by_id(self, product_id):
         self.selected_product_id = product_id
@@ -347,12 +375,24 @@ class OrderView:
 
     def _refresh_selected_card(self):
         for pid, card in self.product_cards.items():
-            if pid == self.last_added_product_id:
-                card.configure(bg="#fff6c9", highlightbackground="#f59e0b", highlightcolor="#f59e0b")
-            elif pid == self.selected_product_id:
-                card.configure(bg="#fff0d9", highlightbackground=COLORS["accent"], highlightcolor=COLORS["accent"])
+            if pid == self.selected_product_id:
+                bg_color = "#fff0d9"
+                border_color = COLORS["accent"]
+            elif pid == self.last_added_product_id:
+                bg_color = "#fff6c9"
+                border_color = "#f59e0b"
             else:
-                card.configure(bg=COLORS["white"], highlightbackground=COLORS["border"], highlightcolor=COLORS["border"])
+                bg_color = COLORS["white"]
+                border_color = COLORS["border"]
+
+            card.configure(bg=bg_color, highlightbackground=border_color, highlightcolor=border_color)
+            for widget in self.card_widgets.get(pid, []):
+                if isinstance(widget, tk.Frame):
+                    widget.configure(bg=bg_color)
+                elif isinstance(widget, tk.Label):
+                    if widget.cget("text") == "HẾT MÓN":
+                        continue
+                    widget.configure(bg=bg_color)
 
 
     def _selected_table_id(self):
