@@ -247,8 +247,11 @@ class OrderView:
             card = tk.Frame(
                 self.product_grid,
                 bg=COLORS["white"],
-                bd=1,
-                relief="solid",
+                bd=0,
+                relief="flat",
+                highlightthickness=2,
+                highlightbackground=COLORS["border"],
+                highlightcolor=COLORS["border"],
                 width=card_width,
                 height=200,
                 cursor="hand2",
@@ -325,9 +328,9 @@ class OrderView:
     def _refresh_selected_card(self):
         for pid, card in self.product_cards.items():
             if pid == self.selected_product_id:
-                card.configure(bg="#fff0d9", bd=2, relief="solid")
+                card.configure(bg="#fff0d9", highlightbackground=COLORS["accent"], highlightcolor=COLORS["accent"])
             else:
-                card.configure(bg=COLORS["white"], bd=1, relief="solid")
+                card.configure(bg=COLORS["white"], highlightbackground=COLORS["border"], highlightcolor=COLORS["border"])
 
 
     def _selected_table_id(self):
