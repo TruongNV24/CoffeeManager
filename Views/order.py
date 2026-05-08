@@ -37,6 +37,8 @@ class OrderView:
         self.product_image_labels = {}
         self.categories = []
         self.category_placeholder = "Chưa chọn loại"
+        self.table_label_map = {}
+        self.last_added_product_id = None
         self.project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.image_handler = ImageHandler(self.project_root)
 
@@ -201,9 +203,11 @@ class OrderView:
         menu.delete(0, "end")
         options = []
         selected_label = ""
+        self.table_label_map = {}
         for table_id, name, status in rows:
-            label = f"{table_id} - {name} ({status})"
+            label = f"{name} ({status})"
             options.append(label)
+            self.table_label_map[label] = table_id
             if table_id == selected_table_id:
                 selected_label = label
             menu.add_command(label=label, command=lambda value=label: self.table_var.set(value))
@@ -312,11 +316,16 @@ class OrderView:
             )
             category_label.pack(pady=(2, 0), fill="x")
 
-            status_text = "HẾT MÓN" if product[3] == "Hết món" else ""
-            status_bg = "#fee2e2" if product[3] == "Hết món" else COLORS["white"]
-            status_fg = "#c0392b" if product[3] == "Hết món" else "white"
-            sold_out = tk.Label(card, text=status_text, bg=status_bg, fg=status_fg, font=(FONT_FAMILY, 9, "bold"), height=1)
-            sold_out.pack(pady=(8, 0), fill="x")
+            if product[3] == "Hết món":
+                sold_out = tk.Label(
+                    card,
+                    text="HẾT MÓN",
+                    bg="#fee2e2",
+                    fg="#c0392b",
+                    font=(FONT_FAMILY, 9, "bold"),
+                    height=1,
+                )
+                sold_out.pack(pady=(8, 0), fill="x")
 
             self._bind_card_click(card, product[0])
             self._bind_card_click(image_label, product[0])
@@ -338,7 +347,9 @@ class OrderView:
 
     def _refresh_selected_card(self):
         for pid, card in self.product_cards.items():
-            if pid == self.selected_product_id:
+            if pid == self.last_added_product_id:
+                card.configure(bg="#fff6c9", highlightbackground="#f59e0b", highlightcolor="#f59e0b")
+            elif pid == self.selected_product_id:
                 card.configure(bg="#fff0d9", highlightbackground=COLORS["accent"], highlightcolor=COLORS["accent"])
             else:
                 card.configure(bg=COLORS["white"], highlightbackground=COLORS["border"], highlightcolor=COLORS["border"])
@@ -348,7 +359,7 @@ class OrderView:
         raw = self.table_var.get().strip()
         if not raw:
             return None
-        return int(raw.split("-")[0].strip())
+        return self.table_label_map.get(raw)
 
     def _on_table_change(self, *_args):
         self._sync_current_order_with_selected_table()
@@ -361,6 +372,15 @@ class OrderView:
 
         active_order = get_active_order_by_table(table_id)
         self.current_order_id = active_order[0] if active_order else None
+
+
+    def _table_name_by_id(self, table_id):
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT TableName FROM Tables WHERE TableID = ?", (table_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row else f"Bàn {table_id}"
 
     def add_product(self):
         if self.role != "Admin":
@@ -448,6 +468,8 @@ class OrderView:
         order_id = create_or_get_active_order(table_id)
         add_item_to_order(order_id, self.selected_product_id, qty)
         self.current_order_id = order_id
+        self.last_added_product_id = self.selected_product_id
+        self._refresh_selected_card()
         self.load_tables()
         self.show_current_order()
 
@@ -469,7 +491,8 @@ class OrderView:
         total = order_info[0] or 0
         status = order_info[1]
         table_id = order_info[2]
-        self.order_text.insert(tk.END, f"Order #{order_id} | Bàn {table_id} | {status}\n")
+        table_name = self._table_name_by_id(table_id)
+        self.order_text.insert(tk.END, f"Order #{order_id} | {table_name} | {status}\n")
         self.order_text.insert(tk.END, "-" * 45 + "\n")
         for _, name, qty, price, subtotal in details:
             self.order_text.insert(tk.END, f"{name} x{qty}  {price:,.0f}đ  = {subtotal:,.0f}đ\n")
@@ -506,9 +529,10 @@ class OrderView:
 
         total = order_info[0] or 0
         table_id = order_info[2]
+        table_name = self._table_name_by_id(table_id)
         lines = [
             f"HÓA ĐƠN ORDER #{self.current_order_id}",
-            f"Bàn: {table_id}",
+            f"Bàn: {table_name}",
             "=" * 40,
         ]
         for _, name, qty, price, subtotal in details:
