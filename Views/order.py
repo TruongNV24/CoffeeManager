@@ -12,6 +12,7 @@ from Models.order import (
     create_or_get_active_order,
     get_active_order_by_table,
     get_order_details,
+    remove_order_detail,
 )
 from Models.product import (
     create_product,
@@ -32,6 +33,7 @@ class OrderView:
         self.current_order_id = None
         self.current_image_preview = None
         self.product_cards = {}
+        self.current_order_details = []
         self.product_image_labels = {}
         self.categories = []
         self.category_placeholder = "Chưa chọn loại"
@@ -63,6 +65,7 @@ class OrderView:
 
         button(top, text="Thêm vào order", variant="success", command=self.add_to_order).pack(side="left", padx=8)
         button(top, text="Xem order", variant="ghost", command=self.show_current_order).pack(side="left", padx=4)
+        button(top, text="Xóa món cuối", variant="danger", command=self.remove_last_order_item).pack(side="left", padx=4)
         button(top, text="Xuất hóa đơn & Thanh toán", variant="warning", command=self.export_invoice).pack(side="left", padx=4)
 
         body = tk.Frame(self.frame, bg=COLORS["app_bg"])
@@ -193,15 +196,22 @@ class OrderView:
         rows = cursor.fetchall()
         conn.close()
 
+        selected_table_id = self._selected_table_id()
         menu = self.table_menu["menu"]
         menu.delete(0, "end")
         options = []
+        selected_label = ""
         for table_id, name, status in rows:
             label = f"{table_id} - {name} ({status})"
             options.append(label)
+            if table_id == selected_table_id:
+                selected_label = label
             menu.add_command(label=label, command=lambda value=label: self.table_var.set(value))
 
-        self.table_var.set(options[0] if options else "")
+        if selected_label:
+            self.table_var.set(selected_label)
+        else:
+            self.table_var.set(options[0] if options else "")
         self._sync_current_order_with_selected_table()
 
     def load_products(self):
@@ -237,6 +247,7 @@ class OrderView:
             widget.destroy()
 
         self.product_cards = {}
+        self.current_order_details = []
         self.product_image_labels = {}
         card_width = 140
         columns = 4
@@ -449,6 +460,7 @@ class OrderView:
             return
 
         details, order_info = get_order_details(order_id)
+        self.current_order_details = details
         self.order_text.delete("1.0", tk.END)
         if not details:
             self.order_text.insert(tk.END, "Order chưa có món.\n")
@@ -463,6 +475,24 @@ class OrderView:
             self.order_text.insert(tk.END, f"{name} x{qty}  {price:,.0f}đ  = {subtotal:,.0f}đ\n")
         self.order_text.insert(tk.END, "-" * 45 + "\n")
         self.order_text.insert(tk.END, f"TỔNG: {total:,.0f}đ\n")
+
+    def remove_last_order_item(self):
+        self._sync_current_order_with_selected_table()
+        if not self.current_order_id:
+            messagebox.showwarning("Chưa có order", "Vui lòng chọn bàn đang có order")
+            return
+
+        details, _ = get_order_details(self.current_order_id)
+        if not details:
+            messagebox.showwarning("Order rỗng", "Không có món nào để xóa")
+            return
+
+        last_detail_id = details[0][0]
+        if not remove_order_detail(last_detail_id):
+            messagebox.showerror("Lỗi", "Không thể xóa món khỏi order")
+            return
+
+        self.show_current_order()
 
     def export_invoice(self):
         if not self.current_order_id:

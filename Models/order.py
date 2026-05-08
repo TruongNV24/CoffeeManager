@@ -89,6 +89,27 @@ def get_order_details(order_id):
     return details, order
 
 
+def remove_order_detail(order_detail_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT OrderID, SubTotal FROM OrderDetails WHERE OrderDetailID = ?", (order_detail_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return False
+
+    order_id, subtotal = row
+    cursor.execute("DELETE FROM OrderDetails WHERE OrderDetailID = ?", (order_detail_id,))
+    cursor.execute(
+        "UPDATE Orders SET TotalAmount = MAX(COALESCE(TotalAmount, 0) - ?, 0) WHERE OrderID = ?",
+        (subtotal, order_id),
+    )
+    conn.commit()
+    conn.close()
+    return True
+
+
 def close_order(order_id):
     conn = get_connection()
     cursor = conn.cursor()
