@@ -161,6 +161,7 @@ class OrderView:
         self.current_order_details = []
         self.product_image_labels = {}
         self.selected_card_item = None
+        self.hovered_product_id = None
         self.categories = []
         self.category_placeholder = "Chưa chọn loại"
         self.table_label_map = {}
@@ -393,22 +394,36 @@ class OrderView:
         self._refresh_selected_card()
         self.product_canvas.configure(scrollregion=self.product_canvas.bbox("all"))
 
-    def select_product_by_id(self, product_id):
-        if self.selected_card_item:
-            self.selected_card_item.set_selected(False)
+    def ClearAllSelections(self):
+        self.selected_product_id = None
+        self.selected_card_item = None
+        for card_item in self.product_cards.values():
+            card_item.set_selected(False)
+
+    def SelectMenuItem(self, product_id):
+        if product_id not in self.product_cards:
+            return
+        self.ClearAllSelections()
         self.selected_product_id = product_id
         self.selected_card_item = self.product_cards.get(product_id)
         if self.selected_card_item:
             self.selected_card_item.set_selected(True)
+        self.UpdateVisualState()
         self.on_select_product()
 
-    def _refresh_selected_card(self):
+    def select_product_by_id(self, product_id):
+        self.SelectMenuItem(product_id)
+
+    def UpdateVisualState(self):
         self.selected_card_item = None
         for pid, card_item in self.product_cards.items():
             card_item.set_selected(pid == self.selected_product_id)
             card_item.set_last_added(pid == self.last_added_product_id)
             if pid == self.selected_product_id:
                 self.selected_card_item = card_item
+
+    def _refresh_selected_card(self):
+        self.UpdateVisualState()
 
 
     def _selected_table_id(self):
@@ -525,11 +540,12 @@ class OrderView:
         add_item_to_order(order_id, self.selected_product_id, qty)
         self.current_order_id = order_id
         self.last_added_product_id = self.selected_product_id
-        self._refresh_selected_card()
+        self.ClearAllSelections()
+        self.UpdateVisualState()
         self.load_tables()
-        self.show_current_order()
+        self.RefreshOrderDetail()
 
-    def show_current_order(self):
+    def RefreshOrderDetail(self):
         self._sync_current_order_with_selected_table()
         order_id = self.current_order_id
         if not order_id:
@@ -555,6 +571,10 @@ class OrderView:
         self.order_text.insert(tk.END, "-" * 45 + "\n")
         self.order_text.insert(tk.END, f"TỔNG: {total:,.0f}đ\n")
 
+
+    def show_current_order(self):
+        self.RefreshOrderDetail()
+
     def remove_last_order_item(self):
         self._sync_current_order_with_selected_table()
         if not self.current_order_id:
@@ -571,7 +591,7 @@ class OrderView:
             messagebox.showerror("Lỗi", "Không thể xóa món khỏi order")
             return
 
-        self.show_current_order()
+        self.RefreshOrderDetail()
 
     def export_invoice(self):
         if not self.current_order_id:
