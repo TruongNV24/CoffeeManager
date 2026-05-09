@@ -25,6 +25,131 @@ from Utils.image_handler import ImageHandler
 from Views.theme import COLORS, FONT_FAMILY, button, entry
 
 
+class ProductCardItem:
+    def __init__(self, parent, product, image, on_click):
+        self.product = product
+        self.product_id = product[0]
+        self.on_click = on_click
+        self.is_hovered = False
+        self.IsSelected = False
+        self.is_last_added = False
+
+        self.frame = tk.Frame(
+            parent,
+            bg=COLORS["white"],
+            bd=0,
+            relief="flat",
+            highlightthickness=2,
+            highlightbackground=COLORS["border"],
+            highlightcolor=COLORS["border"],
+            width=140,
+            height=200,
+            cursor="hand2",
+            padx=8,
+            pady=8,
+        )
+        self.frame.grid_propagate(False)
+
+        self.image_box = tk.Frame(self.frame, bg=COLORS["white"], width=CARD_IMAGE_SIZE[0], height=CARD_IMAGE_SIZE[1])
+        self.image_box.pack(pady=(0, 8))
+        self.image_box.pack_propagate(False)
+
+        self.image_label = tk.Label(self.image_box, image=image, bg=COLORS["white"])
+        self.image_label.image = image
+        self.image_label.place(relx=0.5, rely=0.5, anchor="center")
+
+        self.name_label = tk.Label(
+            self.frame,
+            text=product[1],
+            bg=COLORS["white"],
+            font=(FONT_FAMILY, 10, "bold"),
+            wraplength=116,
+            justify="center",
+            height=2,
+        )
+        self.name_label.pack(fill="x")
+
+        self.price_label = tk.Label(
+            self.frame,
+            text=f"{product[2]:,.0f}đ",
+            bg=COLORS["white"],
+            fg=COLORS["primary_dark"],
+            font=(FONT_FAMILY, 10, "bold"),
+        )
+        self.price_label.pack(pady=(4, 0))
+
+        self.category_label = tk.Label(
+            self.frame,
+            text=product[6] or "Chưa phân loại",
+            bg=COLORS["white"],
+            fg=COLORS["muted"],
+            font=(FONT_FAMILY, 9),
+            wraplength=116,
+            justify="center",
+        )
+        self.category_label.pack(pady=(2, 0), fill="x")
+
+        self.sold_out_label = None
+        if product[3] == "Hết món":
+            self.sold_out_label = tk.Label(
+                self.frame,
+                text="HẾT MÓN",
+                bg="#fee2e2",
+                fg="#c0392b",
+                font=(FONT_FAMILY, 9, "bold"),
+                height=1,
+            )
+            self.sold_out_label.pack(pady=(8, 0), fill="x")
+
+        self._interactive_widgets = [self.frame, self.image_box, self.image_label, self.name_label, self.price_label, self.category_label]
+        if self.sold_out_label:
+            self._interactive_widgets.append(self.sold_out_label)
+        for widget in self._interactive_widgets:
+            widget.bind("<Button-1>", self._on_click)
+            widget.bind("<Enter>", self._on_enter)
+            widget.bind("<Leave>", self._on_leave)
+
+    def _on_click(self, _event):
+        self.on_click(self.product_id)
+
+    def _on_enter(self, _event):
+        self.is_hovered = True
+        self.UpdateVisualState()
+
+    def _on_leave(self, _event):
+        self.is_hovered = False
+        self.UpdateVisualState()
+
+    def set_selected(self, selected):
+        self.IsSelected = selected
+        self.UpdateVisualState()
+
+    def set_last_added(self, is_last_added):
+        self.is_last_added = is_last_added
+        self.UpdateVisualState()
+
+    def UpdateVisualState(self):
+        if self.IsSelected:
+            bg_color = "#fff0d9"
+            border_color = COLORS["accent"]
+        elif self.is_hovered:
+            bg_color = "#f8fafc"
+            border_color = "#93c5fd"
+        elif self.is_last_added:
+            bg_color = "#fff6c9"
+            border_color = "#f59e0b"
+        else:
+            bg_color = COLORS["white"]
+            border_color = COLORS["border"]
+
+        self.frame.configure(bg=bg_color, highlightbackground=border_color, highlightcolor=border_color)
+        self.image_box.configure(bg=bg_color)
+        self.image_label.configure(bg=bg_color)
+        self.name_label.configure(bg=bg_color)
+        self.price_label.configure(bg=bg_color)
+        self.category_label.configure(bg=bg_color)
+
+
 class OrderView:
     def __init__(self, parent, role):
         self.parent = parent
@@ -35,12 +160,11 @@ class OrderView:
         self.product_cards = {}
         self.current_order_details = []
         self.product_image_labels = {}
-        self.card_widgets = {}
+        self.selected_card_item = None
         self.categories = []
         self.category_placeholder = "Chưa chọn loại"
         self.table_label_map = {}
         self.last_added_product_id = None
-        self.hovered_product_id = None
         self.project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.image_handler = ImageHandler(self.project_root)
 
@@ -255,136 +379,36 @@ class OrderView:
         self.product_cards = {}
         self.current_order_details = []
         self.product_image_labels = {}
-        self.card_widgets = {}
-        card_width = 140
         columns = 4
 
         for idx, product in enumerate(self.products):
             row = idx // columns
             column = idx % columns
-            card = tk.Frame(
-                self.product_grid,
-                bg=COLORS["white"],
-                bd=0,
-                relief="flat",
-                highlightthickness=2,
-                highlightbackground=COLORS["border"],
-                highlightcolor=COLORS["border"],
-                width=card_width,
-                height=200,
-                cursor="hand2",
-                padx=8,
-                pady=8,
-            )
-            card.grid(row=row, column=column, padx=6, pady=6, sticky="n")
-            card.grid_propagate(False)
-
             image = self.image_handler.get_image(product[4], CARD_IMAGE_SIZE, cache_group="cards")
-            image_box = tk.Frame(card, bg=COLORS["white"], width=CARD_IMAGE_SIZE[0], height=CARD_IMAGE_SIZE[1])
-            image_box.pack(pady=(0, 8))
-            image_box.pack_propagate(False)
-
-            image_label = tk.Label(image_box, image=image, bg=COLORS["white"])
-            image_label.image = image
-            image_label.place(relx=0.5, rely=0.5, anchor="center")
-
-            name_label = tk.Label(
-                card,
-                text=product[1],
-                bg=COLORS["white"],
-                font=(FONT_FAMILY, 10, "bold"),
-                wraplength=116,
-                justify="center",
-                height=2,
-            )
-            name_label.pack(fill="x")
-
-            price_label = tk.Label(
-                card,
-                text=f"{product[2]:,.0f}đ",
-                bg=COLORS["white"],
-                fg=COLORS["primary_dark"],
-                font=(FONT_FAMILY, 10, "bold"),
-            )
-            price_label.pack(pady=(4, 0))
-
-            category_label = tk.Label(
-                card,
-                text=product[6] or "Chưa phân loại",
-                bg=COLORS["white"],
-                fg=COLORS["muted"],
-                font=(FONT_FAMILY, 9),
-                wraplength=116,
-                justify="center",
-            )
-            category_label.pack(pady=(2, 0), fill="x")
-
-            sold_out = None
-            if product[3] == "Hết món":
-                sold_out = tk.Label(
-                    card,
-                    text="HẾT MÓN",
-                    bg="#fee2e2",
-                    fg="#c0392b",
-                    font=(FONT_FAMILY, 9, "bold"),
-                    height=1,
-                )
-                sold_out.pack(pady=(8, 0), fill="x")
-
-            clickable_widgets = [card, image_box, image_label, name_label, price_label, category_label]
-            if sold_out:
-                clickable_widgets.append(sold_out)
-
-            for widget in clickable_widgets:
-                self._bind_card_click(widget, product[0])
-            self.product_cards[product[0]] = card
-            self.product_image_labels[product[0]] = image_label
-            self.card_widgets[product[0]] = [card, image_box, name_label, price_label, category_label]
+            card_item = ProductCardItem(self.product_grid, product, image, self.select_product_by_id)
+            card_item.frame.grid(row=row, column=column, padx=6, pady=6, sticky="n")
+            self.product_cards[product[0]] = card_item
+            self.product_image_labels[product[0]] = card_item.image_label
 
         self._refresh_selected_card()
         self.product_canvas.configure(scrollregion=self.product_canvas.bbox("all"))
 
-    def _bind_card_click(self, widget, product_id):
-        widget.bind("<Button-1>", lambda _e, pid=product_id: self.select_product_by_id(pid))
-        widget.bind("<Enter>", lambda _e, pid=product_id: self._set_hovered_card(pid))
-        widget.bind("<Leave>", lambda _e, pid=product_id: self._clear_hovered_card(pid))
-
-    def _set_hovered_card(self, product_id):
-        self.hovered_product_id = product_id
-        self._refresh_selected_card()
-
-    def _clear_hovered_card(self, product_id):
-        if self.hovered_product_id == product_id:
-            self.hovered_product_id = None
-            self._refresh_selected_card()
-
     def select_product_by_id(self, product_id):
+        if self.selected_card_item:
+            self.selected_card_item.set_selected(False)
         self.selected_product_id = product_id
+        self.selected_card_item = self.product_cards.get(product_id)
+        if self.selected_card_item:
+            self.selected_card_item.set_selected(True)
         self.on_select_product()
 
     def _refresh_selected_card(self):
-        for pid, card in self.product_cards.items():
+        self.selected_card_item = None
+        for pid, card_item in self.product_cards.items():
+            card_item.set_selected(pid == self.selected_product_id)
+            card_item.set_last_added(pid == self.last_added_product_id)
             if pid == self.selected_product_id:
-                bg_color = "#fff0d9"
-                border_color = COLORS["accent"]
-            elif pid == self.hovered_product_id:
-                bg_color = "#f8fafc"
-                border_color = "#93c5fd"
-            elif pid == self.last_added_product_id:
-                bg_color = "#fff6c9"
-                border_color = "#f59e0b"
-            else:
-                bg_color = COLORS["white"]
-                border_color = COLORS["border"]
-
-            card.configure(bg=bg_color, highlightbackground=border_color, highlightcolor=border_color)
-            for widget in self.card_widgets.get(pid, []):
-                if isinstance(widget, tk.Frame):
-                    widget.configure(bg=bg_color)
-                elif isinstance(widget, tk.Label):
-                    if widget.cget("text") == "HẾT MÓN":
-                        continue
-                    widget.configure(bg=bg_color)
+                self.selected_card_item = card_item
 
 
     def _selected_table_id(self):
