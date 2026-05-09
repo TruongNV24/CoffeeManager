@@ -80,7 +80,8 @@ class TableCard(tk.Frame):
             border_color = COLORS["primary"]
             shell_bg = "#FFF9F4"
 
-        self.configure(bg=card_bg)
+        # Keep outer frame color fixed so hover state does not look like a size change.
+        self.configure(bg=COLORS["app_bg"])
         self.shell.configure(bg=shell_bg, highlightbackground=border_color)
         self.title_lbl.configure(text=table_name, bg=shell_bg)
         self.status_lbl.configure(text=f"{icon}  {badge}", fg=tone, bg=shell_bg)
