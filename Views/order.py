@@ -6,21 +6,7 @@ from tkinter import filedialog, messagebox
 
 from Config.db import get_connection
 from Config.image_config import CARD_IMAGE_SIZE, PREVIEW_IMAGE_SIZE
-from Models.order import (
-    add_item_to_order,
-    close_order,
-    create_or_get_active_order,
-    get_active_order_by_table,
-    get_order_details,
-    remove_order_detail,
-)
-from Models.product import (
-    create_product,
-    delete_product,
-    get_all_categories,
-    get_all_products,
-    update_product,
-)
+from Controllers.order import OrderController
 from Utils.image_handler import ImageHandler
 from Views.theme import COLORS, FONT_FAMILY, button, entry
 
@@ -154,6 +140,7 @@ class OrderView:
     def __init__(self, parent, role):
         self.parent = parent
         self.role = role
+        self.controller = OrderController()
         self.selected_product_id = None
         self.current_order_id = None
         self.current_image_preview = None
@@ -295,7 +282,7 @@ class OrderView:
             self.toggle_product_form_button.config(text="Hiện CRUD món")
 
     def load_categories(self):
-        self.categories = get_all_categories()
+        self.categories = self.controller.get_categories()
         menu = self.product_category_menu["menu"]
         menu.delete(0, "end")
         menu.add_command(
@@ -346,7 +333,7 @@ class OrderView:
         self._sync_current_order_with_selected_table()
 
     def load_products(self):
-        self.products = get_all_products()
+        self.products = self.controller.get_products()
         self.image_handler.clear_group("cards")
         self.render_product_cards()
 
@@ -441,7 +428,7 @@ class OrderView:
             self.current_order_id = None
             return
 
-        active_order = get_active_order_by_table(table_id)
+        active_order = self.controller.get_active_order_by_table(table_id)
         self.current_order_id = active_order[0] if active_order else None
 
 
@@ -470,7 +457,7 @@ class OrderView:
         if not name:
             messagebox.showwarning("Thiếu dữ liệu", "Vui lòng nhập tên món")
             return
-        create_product(
+        self.controller.create_product(
             name,
             price,
             status,
@@ -493,7 +480,7 @@ class OrderView:
         except ValueError:
             messagebox.showwarning("Sai dữ liệu", "Giá món không hợp lệ")
             return
-        update_product(
+        self.controller.update_product(
             self.selected_product_id,
             name,
             price,
@@ -508,7 +495,7 @@ class OrderView:
             return
         if not messagebox.askyesno("Xác nhận", "Xóa món đã chọn?"):
             return
-        deleted = delete_product(self.selected_product_id)
+        deleted = self.controller.delete_product(self.selected_product_id)
         if not deleted:
             messagebox.showerror(
                 "Không thể xóa",
@@ -536,8 +523,8 @@ class OrderView:
             messagebox.showwarning("Sai dữ liệu", "Số lượng phải là số nguyên dương")
             return
 
-        order_id = create_or_get_active_order(table_id)
-        add_item_to_order(order_id, self.selected_product_id, qty)
+        order_id = self.controller.create_or_get_active_order(table_id)
+        self.controller.add_item_to_order(order_id, self.selected_product_id, qty)
         self.current_order_id = order_id
         self.last_added_product_id = self.selected_product_id
         self.ClearAllSelections()
@@ -553,7 +540,7 @@ class OrderView:
             self.order_text.insert(tk.END, "Chưa có order đang chọn.\n")
             return
 
-        details, order_info = get_order_details(order_id)
+        details, order_info = self.controller.get_order_details(order_id)
         self.current_order_details = details
         self.order_text.delete("1.0", tk.END)
         if not details:
@@ -581,13 +568,13 @@ class OrderView:
             messagebox.showwarning("Chưa có order", "Vui lòng chọn bàn đang có order")
             return
 
-        details, _ = get_order_details(self.current_order_id)
+        details, _ = self.controller.get_order_details(self.current_order_id)
         if not details:
             messagebox.showwarning("Order rỗng", "Không có món nào để xóa")
             return
 
         last_detail_id = details[0][0]
-        if not remove_order_detail(last_detail_id):
+        if not self.controller.remove_order_detail(last_detail_id):
             messagebox.showerror("Lỗi", "Không thể xóa món khỏi order")
             return
 
@@ -598,7 +585,7 @@ class OrderView:
             messagebox.showwarning("Chưa có order", "Vui lòng tạo order trước")
             return
 
-        details, order_info = get_order_details(self.current_order_id)
+        details, order_info = self.controller.get_order_details(self.current_order_id)
         if not details:
             messagebox.showwarning("Order rỗng", "Order chưa có món để xuất hóa đơn")
             return
@@ -622,7 +609,7 @@ class OrderView:
             f.write("\n".join(lines))
 
         paid_order_id = self.current_order_id
-        close_order(paid_order_id)
+        self.controller.close_order(paid_order_id)
         messagebox.showinfo("Xuất hóa đơn", f"Đã xuất hóa đơn: {file_path}\nOrder đã thanh toán.")
         self.current_order_id = None
         self.load_tables()
