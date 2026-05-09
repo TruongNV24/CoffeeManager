@@ -40,6 +40,7 @@ class OrderView:
         self.category_placeholder = "Chưa chọn loại"
         self.table_label_map = {}
         self.last_added_product_id = None
+        self.hovered_product_id = None
         self.project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.image_handler = ImageHandler(self.project_root)
 
@@ -344,30 +345,18 @@ class OrderView:
         self.product_canvas.configure(scrollregion=self.product_canvas.bbox("all"))
 
     def _bind_card_click(self, widget, product_id):
-        widget.bind("<ButtonPress-1>", lambda _e, pid=product_id: self._set_pressed_card(pid))
-        widget.bind("<ButtonRelease-1>", lambda _e, pid=product_id: self.select_product_by_id(pid))
+        widget.bind("<Button-1>", lambda _e, pid=product_id: self.select_product_by_id(pid))
+        widget.bind("<Enter>", lambda _e, pid=product_id: self._set_hovered_card(pid))
+        widget.bind("<Leave>", lambda _e, pid=product_id: self._clear_hovered_card(pid))
 
-    def _set_pressed_card(self, product_id):
-        for pid, card in self.product_cards.items():
-            if pid == product_id:
-                bg_color = "#ffe7bf"
-                border_color = COLORS["accent"]
-            elif pid == self.last_added_product_id:
-                bg_color = "#fff6c9"
-                border_color = "#f59e0b"
-            elif pid == self.selected_product_id:
-                bg_color = "#fff0d9"
-                border_color = COLORS["accent"]
-            else:
-                bg_color = COLORS["white"]
-                border_color = COLORS["border"]
+    def _set_hovered_card(self, product_id):
+        self.hovered_product_id = product_id
+        self._refresh_selected_card()
 
-            card.configure(bg=bg_color, highlightbackground=border_color, highlightcolor=border_color)
-            for widget in self.card_widgets.get(pid, []):
-                if isinstance(widget, tk.Frame):
-                    widget.configure(bg=bg_color)
-                elif isinstance(widget, tk.Label):
-                    widget.configure(bg=bg_color)
+    def _clear_hovered_card(self, product_id):
+        if self.hovered_product_id == product_id:
+            self.hovered_product_id = None
+            self._refresh_selected_card()
 
     def select_product_by_id(self, product_id):
         self.selected_product_id = product_id
@@ -375,12 +364,15 @@ class OrderView:
 
     def _refresh_selected_card(self):
         for pid, card in self.product_cards.items():
-            if pid == self.last_added_product_id:
-                bg_color = "#fff6c9"
-                border_color = "#f59e0b"
-            elif pid == self.selected_product_id:
+            if pid == self.selected_product_id:
                 bg_color = "#fff0d9"
                 border_color = COLORS["accent"]
+            elif pid == self.hovered_product_id:
+                bg_color = "#f8fafc"
+                border_color = "#93c5fd"
+            elif pid == self.last_added_product_id:
+                bg_color = "#fff6c9"
+                border_color = "#f59e0b"
             else:
                 bg_color = COLORS["white"]
                 border_color = COLORS["border"]
