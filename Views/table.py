@@ -118,6 +118,8 @@ class TableView:
         self.frame.pack(fill="both", expand=True)
 
         self.build_crud_panel()
+        self.build_table_list_area()
+        self.frame.bind("<Configure>", self.on_layout_resize)
         self.load_tables()
 
     def build_crud_panel(self):
@@ -201,6 +203,43 @@ class TableView:
         )
         self.list_frame.pack(fill="both", expand=True, padx=24, pady=(0, 24))
 
+    def build_table_list_area(self):
+        for widget in self.list_frame.winfo_children():
+            widget.destroy()
+        self.list_header = tk.Label(
+            self.list_frame,
+            text="Danh sách bàn (nhấn để chọn):",
+            bg=COLORS["surface"],
+            fg=COLORS["text"],
+            font=(FONT_FAMILY, 13, "bold"),
+        )
+        self.list_header.pack(anchor="w", pady=(5, 12))
+
+        self.scroll_canvas = tk.Canvas(self.list_frame, bg=COLORS["surface"], highlightthickness=0)
+        self.scrollbar = tk.Scrollbar(self.list_frame, orient="vertical", command=self.scroll_canvas.yview)
+        self.scroll_canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.scroll_canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+
+        self.grid_frame = tk.Frame(self.scroll_canvas, bg=COLORS["surface"])
+        self.canvas_window = self.scroll_canvas.create_window((0, 0), window=self.grid_frame, anchor="nw")
+        self.grid_frame.bind("<Configure>", self._update_scroll_region)
+        self.scroll_canvas.bind("<Configure>", self._sync_canvas_width)
+        self.scroll_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+    def _on_mousewheel(self, event):
+        if self.scroll_canvas.winfo_exists():
+            self.scroll_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    def _update_scroll_region(self, _event=None):
+        self.scroll_canvas.configure(scrollregion=self.scroll_canvas.bbox("all"))
+
+    def _sync_canvas_width(self, event):
+        self.scroll_canvas.itemconfigure(self.canvas_window, width=event.width)
+        self.reflow_table_grid()
+
+    def on_layout_resize(self, _event=None):
+        self.reflow_table_grid()
 
     def toggle_crud_panel(self):
         if self.crud_panel_visible:
@@ -216,48 +255,50 @@ class TableView:
     def load_tables(self):
         tables = self.controller.load_tables()
 
-        for widget in self.list_frame.winfo_children():
+        for widget in self.grid_frame.winfo_children():
             widget.destroy()
+        self.table_cards = {}
 
         if not tables:
+            self.list_header.config(text="Danh sách bàn")
             tk.Label(
-                self.list_frame,
+                self.grid_frame,
                 text="Chưa có bàn nào trong hệ thống.",
-                bg=COLORS["app_bg"],
+                bg=COLORS["surface"],
                 fg=COLORS["muted"],
                 font=(FONT_FAMILY, 12),
             ).pack(pady=40)
+            self._update_scroll_region()
             return
 
         header_text = "Danh sách bàn (nhấn để chọn):"
         if self.role == "Staff":
             header_text += " Staff chỉ được đổi trạng thái."
+        self.list_header.config(text=header_text)
 
-        tk.Label(
-            self.list_frame,
-            text=header_text,
-            bg=COLORS["surface"],
-            fg=COLORS["text"],
-            font=(FONT_FAMILY, 13, "bold"),
-        ).pack(anchor="w", pady=(5, 12))
-
-        if not hasattr(self, "grid_frame"):
-            self.grid_frame = tk.Frame(self.list_frame, bg=COLORS["surface"])
-            self.grid_frame.pack(fill="both", expand=True)
-        for widget in self.grid_frame.winfo_children():
-            widget.destroy()
-        self.table_cards = {}
-
-        for index, table in enumerate(tables):
+        for table in tables:
             card = TableCard(self.grid_frame, table, self.select_table)
-            card.grid(row=index // 4, column=index % 4, padx=10, pady=10, sticky="n")
             self.table_cards[table[0]] = card
             card.set_occupied(table[2] == "Đang dùng")
 
-        for col in range(4):
-            self.grid_frame.grid_columnconfigure(col, weight=1, uniform="tables")
-
+        self.reflow_table_grid()
         self.SetSelectedTable(self.selected_table_id)
+
+    def reflow_table_grid(self):
+        if not getattr(self, "table_cards", None):
+            return
+        width = max(self.scroll_canvas.winfo_width(), 760)
+        card_total = TableCard.CARD_WIDTH + 20
+        columns = max(1, width // card_total)
+        ids = list(self.table_cards.keys())
+        for index, tid in enumerate(ids):
+            card = self.table_cards[tid]
+            row = index // columns
+            col = index % columns
+            card.grid(row=row, column=col, padx=10, pady=10, sticky="n")
+        for col in range(columns):
+            self.grid_frame.grid_columnconfigure(col, weight=1, uniform="tables")
+        self._update_scroll_region()
 
     def SetSelectedTable(self, table_id):
         self.selected_table_id = table_id
