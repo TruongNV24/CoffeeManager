@@ -11,6 +11,15 @@ from Utils.image_handler import ImageHandler
 from Views.theme import COLORS, FONT_FAMILY, button, entry
 
 
+CARD_WIDTH = 170
+CARD_HEIGHT = 240
+CARD_MARGIN_X = 8
+CARD_MARGIN_Y = 8
+CARD_INNER_PAD = 8
+CARD_NAME_MAX_CHARS = 36
+CARD_CATEGORY_MAX_CHARS = 32
+
+
 class ProductCardItem:
     def __init__(self, parent, product, image, on_click):
         self.product = product
@@ -28,35 +37,37 @@ class ProductCardItem:
             highlightthickness=2,
             highlightbackground=COLORS["border"],
             highlightcolor=COLORS["border"],
-            width=140,
-            height=200,
+            width=CARD_WIDTH,
+            height=CARD_HEIGHT,
             cursor="hand2",
-            padx=8,
-            pady=8,
         )
         self.frame.grid_propagate(False)
+        self.frame.pack_propagate(False)
 
-        self.image_box = tk.Frame(self.frame, bg=COLORS["white"], width=CARD_IMAGE_SIZE[0], height=CARD_IMAGE_SIZE[1])
+        self.container = tk.Frame(self.frame, bg=COLORS["white"], padx=CARD_INNER_PAD, pady=CARD_INNER_PAD)
+        self.container.pack(fill="both", expand=True)
+
+        self.image_box = tk.Frame(self.container, bg=COLORS["white"], width=CARD_IMAGE_SIZE[0], height=CARD_IMAGE_SIZE[1])
         self.image_box.pack(pady=(0, 8))
         self.image_box.pack_propagate(False)
 
-        self.image_label = tk.Label(self.image_box, image=image, bg=COLORS["white"])
+        self.image_label = tk.Label(self.image_box, image=image, bg=COLORS["white"], width=CARD_IMAGE_SIZE[0], height=CARD_IMAGE_SIZE[1])
         self.image_label.image = image
         self.image_label.place(relx=0.5, rely=0.5, anchor="center")
 
         self.name_label = tk.Label(
-            self.frame,
-            text=product[1],
+            self.container,
+            text=self._clamp_text(product[1], CARD_NAME_MAX_CHARS),
             bg=COLORS["white"],
             font=(FONT_FAMILY, 10, "bold"),
-            wraplength=116,
+            wraplength=140,
             justify="center",
             height=2,
         )
         self.name_label.pack(fill="x")
 
         self.price_label = tk.Label(
-            self.frame,
+            self.container,
             text=f"{product[2]:,.0f}đ",
             bg=COLORS["white"],
             fg=COLORS["primary_dark"],
@@ -65,35 +76,38 @@ class ProductCardItem:
         self.price_label.pack(pady=(4, 0))
 
         self.category_label = tk.Label(
-            self.frame,
-            text=product[6] or "Chưa phân loại",
+            self.container,
+            text=self._clamp_text(product[6] or "Chưa phân loại", CARD_CATEGORY_MAX_CHARS),
             bg=COLORS["white"],
             fg=COLORS["muted"],
             font=(FONT_FAMILY, 9),
-            wraplength=116,
+            wraplength=140,
             justify="center",
         )
         self.category_label.pack(pady=(2, 0), fill="x")
 
-        self.sold_out_label = None
-        if product[3] == "Hết món":
-            self.sold_out_label = tk.Label(
-                self.frame,
-                text="HẾT MÓN",
-                bg="#fee2e2",
-                fg="#c0392b",
-                font=(FONT_FAMILY, 9, "bold"),
-                height=1,
-            )
-            self.sold_out_label.pack(pady=(8, 0), fill="x")
+        sold_out = product[3] == "Hết món"
+        self.sold_out_label = tk.Label(
+            self.container,
+            text="HẾT MÓN" if sold_out else "",
+            bg="#fee2e2" if sold_out else COLORS["white"],
+            fg="#c0392b",
+            font=(FONT_FAMILY, 9, "bold"),
+            height=1,
+        )
+        self.sold_out_label.pack(pady=(8, 0), fill="x")
 
-        self._interactive_widgets = [self.frame, self.image_box, self.image_label, self.name_label, self.price_label, self.category_label]
-        if self.sold_out_label:
-            self._interactive_widgets.append(self.sold_out_label)
+        self._interactive_widgets = [self.frame, self.container, self.image_box, self.image_label, self.name_label, self.price_label, self.category_label, self.sold_out_label]
         for widget in self._interactive_widgets:
             widget.bind("<Button-1>", self._on_click)
             widget.bind("<Enter>", self._on_enter)
             widget.bind("<Leave>", self._on_leave)
+
+    def _clamp_text(self, value, max_chars):
+        text = (value or "").strip()
+        if len(text) <= max_chars:
+            return text
+        return text[: max_chars - 3].rstrip() + "..."
 
     def _on_click(self, _event):
         self.on_click(self.product_id)
@@ -128,12 +142,15 @@ class ProductCardItem:
             bg_color = COLORS["white"]
             border_color = COLORS["border"]
 
-        self.frame.configure(bg=bg_color, highlightbackground=border_color, highlightcolor=border_color)
-        self.image_box.configure(bg=bg_color)
+        self.frame.configure(bg=bg_color, highlightbackground=border_color, highlightcolor=border_color, width=CARD_WIDTH, height=CARD_HEIGHT)
+        self.container.configure(bg=bg_color)
+        self.image_box.configure(bg=bg_color, width=CARD_IMAGE_SIZE[0], height=CARD_IMAGE_SIZE[1])
         self.image_label.configure(bg=bg_color)
         self.name_label.configure(bg=bg_color)
         self.price_label.configure(bg=bg_color)
         self.category_label.configure(bg=bg_color)
+        if self.sold_out_label.cget("text") == "":
+            self.sold_out_label.configure(bg=bg_color)
 
 
 class OrderView:
@@ -212,7 +229,7 @@ class OrderView:
         grid_wrap = tk.Frame(left, bg=COLORS["surface"])
         grid_wrap.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
-        self.product_canvas = tk.Canvas(grid_wrap, bg=COLORS["surface"], highlightthickness=0)
+        self.product_canvas = tk.Canvas(grid_wrap, bg=COLORS["surface"], highlightthickness=0, bd=0)
         self.product_scrollbar = tk.Scrollbar(grid_wrap, orient="vertical", command=self.product_canvas.yview)
         self.product_canvas.configure(yscrollcommand=self.product_scrollbar.set)
         self.product_canvas.pack(side="left", fill="both", expand=True)
@@ -368,13 +385,15 @@ class OrderView:
         self.current_order_details = []
         self.product_image_labels = {}
         columns = 4
+        for col in range(columns):
+            self.product_grid.grid_columnconfigure(col, weight=1, uniform="product_cards")
 
         for idx, product in enumerate(self.products):
             row = idx // columns
             column = idx % columns
             image = self.image_handler.get_image(product[4], CARD_IMAGE_SIZE, cache_group="cards")
             card_item = ProductCardItem(self.product_grid, product, image, self.select_product_by_id)
-            card_item.frame.grid(row=row, column=column, padx=6, pady=6, sticky="n")
+            card_item.frame.grid(row=row, column=column, padx=CARD_MARGIN_X, pady=CARD_MARGIN_Y, sticky="n")
             self.product_cards[product[0]] = card_item
             self.product_image_labels[product[0]] = card_item.image_label
 
