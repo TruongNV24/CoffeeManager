@@ -4,6 +4,7 @@ from Views.table import TableView
 from Views.employee import EmployeeView
 from Views.salary import SalaryView
 from Views.user import UserView
+from Views.report import ReportView
 
 
 class MainController:
@@ -17,8 +18,9 @@ class MainController:
                 "show_employees",
                 "show_salary",
                 "show_users",
+                "show_reports",
             },
-            "Staff": {"show_tables", "show_products"},
+            "Staff": {"show_tables", "show_products", "show_reports"},
         }
 
     def _can_access(self, action_name):
@@ -103,3 +105,11 @@ class MainController:
             conn.commit()
 
         conn.close()
+
+    def show_reports(self):
+        if not self._can_access("show_reports"):
+            self._deny_access()
+            return
+
+        self.content_view.clear()
+        ReportView(self.content_view.frame)

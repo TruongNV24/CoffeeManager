@@ -39,6 +39,7 @@ def create_menu(root, controller, role):
 
     create_button("🪑  Xem đặt bàn", controller.show_tables).pack(fill="x", pady=2)
     create_button("☕  Gọi món", controller.show_products).pack(fill="x", pady=2)
+    create_button("📊  Báo cáo / Thống kê", controller.show_reports).pack(fill="x", pady=2)
 
     if role == "Admin":
         tk.Label(
