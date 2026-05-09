@@ -1,4 +1,13 @@
 from Config.db import get_connection
+from Models.table import resolve_table_status
+
+
+def update_table_status_from_order(table_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE Tables SET Status = ? WHERE TableID = ?", (resolve_table_status(table_id), table_id))
+    conn.commit()
+    conn.close()
 
 
 def get_active_order_by_table(table_id):
@@ -32,9 +41,9 @@ def create_or_get_active_order(table_id, employee_id=None):
         (table_id, employee_id),
     )
     order_id = cursor.lastrowid
-    cursor.execute("UPDATE Tables SET Status='Đang dùng' WHERE TableID = ?", (table_id,))
     conn.commit()
     conn.close()
+    update_table_status_from_order(table_id)
     return order_id
 
 
@@ -64,8 +73,12 @@ def add_item_to_order(order_id, product_id, quantity):
         (subtotal, order_id),
     )
 
+    cursor.execute("SELECT TableID FROM Orders WHERE OrderID = ?", (order_id,))
+    table_row = cursor.fetchone()
     conn.commit()
     conn.close()
+    if table_row:
+        update_table_status_from_order(table_row[0])
 
 
 def get_order_details(order_id):
@@ -100,6 +113,8 @@ def remove_order_detail(order_detail_id):
         return False
 
     order_id, subtotal = row
+    cursor.execute("SELECT TableID FROM Orders WHERE OrderID = ?", (order_id,))
+    table_row = cursor.fetchone()
     cursor.execute("DELETE FROM OrderDetails WHERE OrderDetailID = ?", (order_detail_id,))
     cursor.execute(
         "UPDATE Orders SET TotalAmount = MAX(COALESCE(TotalAmount, 0) - ?, 0) WHERE OrderID = ?",
@@ -107,6 +122,8 @@ def remove_order_detail(order_detail_id):
     )
     conn.commit()
     conn.close()
+    if table_row:
+        update_table_status_from_order(table_row[0])
     return True
 
 
@@ -122,6 +139,6 @@ def close_order(order_id):
 
     table_id = row[0]
     cursor.execute("UPDATE Orders SET Status='Đã thanh toán' WHERE OrderID = ?", (order_id,))
-    cursor.execute("UPDATE Tables SET Status='Trống' WHERE TableID = ?", (table_id,))
     conn.commit()
     conn.close()
+    update_table_status_from_order(table_id)

@@ -181,6 +181,12 @@ class OrderView:
         self.load_tables()
         self.load_products()
 
+    def UpdateTableStatus(self):
+        self.load_tables()
+
+    def RefreshTableCardUI(self):
+        self.load_tables()
+
     def _build_ui(self):
         top = tk.Frame(self.frame, bg=COLORS["surface"], padx=16, pady=14, highlightthickness=1, highlightbackground=COLORS["border"])
         top.pack(fill="x", padx=22, pady=(20, 12))
@@ -548,7 +554,8 @@ class OrderView:
         self.last_added_product_id = self.selected_product_id
         self.ClearAllSelections()
         self.UpdateVisualState()
-        self.load_tables()
+        self.UpdateTableStatus()
+        self.RefreshTableCardUI()
         self.RefreshOrderDetail()
 
     def RefreshOrderDetail(self):
@@ -598,6 +605,8 @@ class OrderView:
             return
 
         self.RefreshOrderDetail()
+        self.UpdateTableStatus()
+        self.RefreshTableCardUI()
 
     def export_invoice(self):
         if not self.current_order_id:
@@ -631,7 +640,8 @@ class OrderView:
         self.controller.close_order(paid_order_id)
         messagebox.showinfo("Xuất hóa đơn", f"Đã xuất hóa đơn: {file_path}\nOrder đã thanh toán.")
         self.current_order_id = None
-        self.load_tables()
+        self.UpdateTableStatus()
+        self.RefreshTableCardUI()
         self.order_text.delete("1.0", tk.END)
         self.order_text.insert(tk.END, f"Đã thanh toán order #{paid_order_id}.\n")
 
