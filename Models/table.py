@@ -1,6 +1,10 @@
 from Config.db import get_connection
 
 
+TABLE_STATUS_EMPTY = "Trống"
+TABLE_STATUS_OCCUPIED = "Đang dùng"
+
+
 def get_all_tables():
     conn = get_connection()
     cursor = conn.cursor()
@@ -51,3 +55,25 @@ def delete_table(table_id):
     cursor.execute("DELETE FROM Tables WHERE TableID = ?", (table_id,))
     conn.commit()
     conn.close()
+
+
+def has_unpaid_order_items(table_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT 1
+        FROM Orders o
+        JOIN OrderDetails od ON od.OrderID = o.OrderID
+        WHERE o.TableID = ? AND o.Status = 'Đang dùng'
+        LIMIT 1
+        """,
+        (table_id,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return bool(row)
+
+
+def resolve_table_status(table_id):
+    return TABLE_STATUS_OCCUPIED if has_unpaid_order_items(table_id) else TABLE_STATUS_EMPTY

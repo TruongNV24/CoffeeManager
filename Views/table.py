@@ -1,4 +1,5 @@
 import tkinter as tk
+from enum import Enum
 from tkinter import messagebox
 
 from Controllers.table import TableController
@@ -6,11 +7,24 @@ from Views.theme import COLORS, FONT_FAMILY, button, entry
 
 
 class TableCard(tk.Frame):
+    CARD_WIDTH = 180
+    CARD_HEIGHT = 120
+
+    class TableStatus(Enum):
+        NORMAL = "normal"
+        HOVER = "hover"
+        SELECTED = "selected"
+        EMPTY = "Trống"
+        OCCUPIED = "Đang dùng"
+
     def __init__(self, parent, table_data, on_select):
-        super().__init__(parent, bg=COLORS["app_bg"], padx=3, pady=3)
+        super().__init__(parent, bg=COLORS["app_bg"], width=self.CARD_WIDTH, height=self.CARD_HEIGHT)
+        self.pack_propagate(False)
+        self.grid_propagate(False)
         self.table_data = table_data
         self.on_select = on_select
         self.selected = False
+        self.hovered = False
         self.occupied = table_data[2] == "Đang dùng"
 
         self.shell = tk.Frame(self, bg=COLORS["surface"], highlightthickness=1, highlightbackground=COLORS["border"])
@@ -22,7 +36,7 @@ class TableCard(tk.Frame):
         self.status_lbl.pack(anchor="w", padx=14)
         self.info_lbl = tk.Label(
             self.shell,
-            text="Chi tiết đơn hàng hiển thị khi tích hợp POS",
+            text="0 món | 0đ",
             bg=COLORS["surface"],
             fg=COLORS["muted"],
             font=(FONT_FAMILY, 9),
@@ -44,43 +58,47 @@ class TableCard(tk.Frame):
         widget.configure(cursor="hand2")
 
     def on_hover_enter(self, _event):
-        self.update_visual_state(hover=True)
+        self.hovered = True
+        self.RefreshTableCardUI()
 
     def on_hover_leave(self, _event):
-        self.update_visual_state(hover=False)
+        self.hovered = False
+        self.RefreshTableCardUI()
 
     def handle_select(self, _event):
         self.on_select(self.table_data)
 
     def set_selected(self, value):
         self.selected = value
-        self.update_visual_state()
+        self.RefreshTableCardUI()
 
     def set_occupied(self, value):
         self.occupied = value
+        self.RefreshTableCardUI()
+
+    def update_order_summary(self, items_count=0, total_amount=0):
+        self.info_lbl.configure(text=f"{items_count} món | {total_amount:,.0f}đ")
+
+    def RefreshTableCardUI(self):
         self.update_visual_state()
 
-    def update_visual_state(self, hover=False):
+    def update_visual_state(self):
         table_name = self.table_data[1]
-        icon = "🔴" if self.occupied else "🟢"
+        icon = "🍽️" if self.occupied else "✅"
         badge = "Đang dùng" if self.occupied else "Trống"
-        tone = COLORS["danger"] if self.occupied else COLORS["success"]
+        tone = "#b45309" if self.occupied else COLORS["success"]
 
-        card_bg = COLORS["surface"]
-        border_color = COLORS["border"]
-        shell_bg = COLORS["surface"]
+        shell_bg = "#fff7ed" if self.occupied else COLORS["surface"]
+        border_color = "#f59e0b" if self.occupied else COLORS["border"]
 
-        if hover:
-            card_bg = COLORS["surface_alt"]
+        if self.hovered:
             border_color = "#E8CFBC"
             shell_bg = "#FEFBF8"
 
         if self.selected:
-            card_bg = "#FDF3EC"
             border_color = COLORS["primary"]
             shell_bg = "#FFF9F4"
 
-        # Keep outer frame color fixed so hover state does not look like a size change.
         self.configure(bg=COLORS["app_bg"])
         self.shell.configure(bg=shell_bg, highlightbackground=border_color)
         self.title_lbl.configure(text=table_name, bg=shell_bg)
@@ -94,6 +112,7 @@ class TableView:
         self.role = role
         self.controller = TableController()
         self.selected_table_id = None
+        self.table_cards = {}
 
         self.frame = tk.Frame(parent, bg=COLORS["app_bg"])
         self.frame.pack(fill="both", expand=True)
@@ -222,31 +241,39 @@ class TableView:
             font=(FONT_FAMILY, 13, "bold"),
         ).pack(anchor="w", pady=(5, 12))
 
-        grid_frame = tk.Frame(self.list_frame, bg=COLORS["surface"])
-        grid_frame.pack(fill="both", expand=True)
+        if not hasattr(self, "grid_frame"):
+            self.grid_frame = tk.Frame(self.list_frame, bg=COLORS["surface"])
+            self.grid_frame.pack(fill="both", expand=True)
+        for widget in self.grid_frame.winfo_children():
+            widget.destroy()
         self.table_cards = {}
 
         for index, table in enumerate(tables):
-            card = TableCard(grid_frame, table, self.select_table)
-            card.grid(row=index // 4, column=index % 4, padx=9, pady=9, sticky="nsew")
-            card.configure(width=220, height=118)
-            card.grid_propagate(False)
+            card = TableCard(self.grid_frame, table, self.select_table)
+            card.grid(row=index // 4, column=index % 4, padx=10, pady=10, sticky="n")
             self.table_cards[table[0]] = card
+            card.set_occupied(table[2] == "Đang dùng")
 
         for col in range(4):
-            grid_frame.grid_columnconfigure(col, weight=1, uniform="tables")
+            self.grid_frame.grid_columnconfigure(col, weight=1, uniform="tables")
+
+        self.SetSelectedTable(self.selected_table_id)
+
+    def SetSelectedTable(self, table_id):
+        self.selected_table_id = table_id
+        for tid, card in self.table_cards.items():
+            card.set_selected(tid == self.selected_table_id)
 
     def select_table(self, table):
         table_id, name, status = table
-        self.selected_table_id = table_id
+        self.SetSelectedTable(table_id)
         self.name_entry.config(state="normal")
         self.name_entry.delete(0, tk.END)
         self.name_entry.insert(0, name or "")
         if self.role == "Staff":
             self.name_entry.config(state="disabled")
         self.status_var.set(status or "Trống")
-        for table_id, card in self.table_cards.items():
-            card.set_selected(table_id == self.selected_table_id)
+        for tid, card in self.table_cards.items():
             card.set_occupied(card.table_data[2] == "Đang dùng")
 
     def add_table(self):
