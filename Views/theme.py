@@ -3,13 +3,13 @@ from tkinter import ttk
 
 # Warm coffee-inspired palette shared by all screens.
 COLORS = {
-    "app_bg": "#f6efe7",
-    "surface": "#fffaf3",
-    "surface_alt": "#f1e4d4",
-    "sidebar": "#2f1f17",
+    "app_bg": "#f8f5f2",
+    "surface": "#ffffff",
+    "surface_alt": "#f4e4d8",
+    "sidebar": "#3B2218",
     "sidebar_hover": "#8b5e34",
     "header": "#3b261c",
-    "primary": "#b7793a",
+    "primary": "#C67C4E",
     "primary_dark": "#7a4a24",
     "success": "#2f855a",
     "danger": "#c2410c",
@@ -17,7 +17,7 @@ COLORS = {
     "info": "#2563eb",
     "text": "#2f241d",
     "muted": "#7c6a5d",
-    "border": "#e2c8aa",
+    "border": "#eaded4",
     "white": "#ffffff",
 }
 

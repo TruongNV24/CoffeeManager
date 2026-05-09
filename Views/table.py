@@ -5,6 +5,88 @@ from Controllers.table import TableController
 from Views.theme import COLORS, FONT_FAMILY, button, entry
 
 
+class TableCard(tk.Frame):
+    def __init__(self, parent, table_data, on_select):
+        super().__init__(parent, bg=COLORS["app_bg"], padx=3, pady=3)
+        self.table_data = table_data
+        self.on_select = on_select
+        self.selected = False
+        self.occupied = table_data[2] == "Đang dùng"
+
+        self.shell = tk.Frame(self, bg=COLORS["surface"], highlightthickness=1, highlightbackground=COLORS["border"])
+        self.shell.pack(fill="both", expand=True)
+
+        self.title_lbl = tk.Label(self.shell, bg=COLORS["surface"], fg=COLORS["text"], font=(FONT_FAMILY, 12, "bold"))
+        self.title_lbl.pack(anchor="w", padx=14, pady=(12, 4))
+        self.status_lbl = tk.Label(self.shell, bg=COLORS["surface"], font=(FONT_FAMILY, 10, "bold"))
+        self.status_lbl.pack(anchor="w", padx=14)
+        self.info_lbl = tk.Label(
+            self.shell,
+            text="Chi tiết đơn hàng hiển thị khi tích hợp POS",
+            bg=COLORS["surface"],
+            fg=COLORS["muted"],
+            font=(FONT_FAMILY, 9),
+        )
+        self.info_lbl.pack(anchor="w", padx=14, pady=(5, 12))
+
+        self.bind_all_states(self)
+        self.bind_all_states(self.shell)
+        self.bind_all_states(self.title_lbl)
+        self.bind_all_states(self.status_lbl)
+        self.bind_all_states(self.info_lbl)
+
+        self.update_visual_state()
+
+    def bind_all_states(self, widget):
+        widget.bind("<Enter>", self.on_hover_enter)
+        widget.bind("<Leave>", self.on_hover_leave)
+        widget.bind("<Button-1>", self.handle_select)
+        widget.configure(cursor="hand2")
+
+    def on_hover_enter(self, _event):
+        self.update_visual_state(hover=True)
+
+    def on_hover_leave(self, _event):
+        self.update_visual_state(hover=False)
+
+    def handle_select(self, _event):
+        self.on_select(self.table_data)
+
+    def set_selected(self, value):
+        self.selected = value
+        self.update_visual_state()
+
+    def set_occupied(self, value):
+        self.occupied = value
+        self.update_visual_state()
+
+    def update_visual_state(self, hover=False):
+        table_name = self.table_data[1]
+        icon = "🔴" if self.occupied else "🟢"
+        badge = "Đang dùng" if self.occupied else "Trống"
+        tone = COLORS["danger"] if self.occupied else COLORS["success"]
+
+        card_bg = COLORS["surface"]
+        border_color = COLORS["border"]
+        shell_bg = COLORS["surface"]
+
+        if hover:
+            card_bg = COLORS["surface_alt"]
+            border_color = "#E8CFBC"
+            shell_bg = "#FEFBF8"
+
+        if self.selected:
+            card_bg = "#FDF3EC"
+            border_color = COLORS["primary"]
+            shell_bg = "#FFF9F4"
+
+        self.configure(bg=card_bg)
+        self.shell.configure(bg=shell_bg, highlightbackground=border_color)
+        self.title_lbl.configure(text=table_name, bg=shell_bg)
+        self.status_lbl.configure(text=f"{icon}  {badge}", fg=tone, bg=shell_bg)
+        self.info_lbl.configure(bg=shell_bg)
+
+
 class TableView:
     def __init__(self, parent, role):
         self.parent = parent
@@ -20,20 +102,20 @@ class TableView:
 
     def build_crud_panel(self):
         header = tk.Frame(self.frame, bg=COLORS["app_bg"])
-        header.pack(fill="x", padx=24, pady=(20, 8))
+        header.pack(fill="x", padx=24, pady=(20, 10))
 
         title_group = tk.Frame(header, bg=COLORS["app_bg"])
         title_group.pack(side="left", fill="x", expand=True)
         tk.Label(
             title_group,
-            text="Sơ đồ bàn",
+            text="☕  Sơ đồ bàn",
             bg=COLORS["app_bg"],
             fg=COLORS["text"],
-            font=(FONT_FAMILY, 20, "bold"),
+            font=(FONT_FAMILY, 24, "bold"),
         ).pack(anchor="w")
         tk.Label(
             title_group,
-            text="Theo dõi trạng thái và cập nhật bàn chỉ với một lần chọn.",
+            text="Không gian quản lý bàn kiểu POS hiện đại, trực quan và tinh gọn.",
             bg=COLORS["app_bg"],
             fg=COLORS["muted"],
             font=(FONT_FAMILY, 10),
@@ -51,8 +133,8 @@ class TableView:
         form_frame = tk.Frame(
             self.frame,
             bg=COLORS["surface"],
-            padx=18,
-            pady=16,
+            padx=22,
+            pady=18,
             highlightthickness=1,
             highlightbackground=COLORS["border"],
         )
@@ -89,7 +171,14 @@ class TableView:
             self.btn_add.config(state="disabled")
             self.btn_delete.config(state="disabled")
 
-        self.list_frame = tk.Frame(self.frame, bg=COLORS["app_bg"])
+        self.list_frame = tk.Frame(
+            self.frame,
+            bg=COLORS["surface"],
+            padx=18,
+            pady=16,
+            highlightthickness=1,
+            highlightbackground=COLORS["border"],
+        )
         self.list_frame.pack(fill="both", expand=True, padx=24, pady=(0, 24))
 
 
@@ -127,41 +216,24 @@ class TableView:
         tk.Label(
             self.list_frame,
             text=header_text,
-            bg=COLORS["app_bg"],
+            bg=COLORS["surface"],
             fg=COLORS["text"],
-            font=(FONT_FAMILY, 12, "bold"),
+            font=(FONT_FAMILY, 13, "bold"),
         ).pack(anchor="w", pady=(5, 12))
 
-        grid_frame = tk.Frame(self.list_frame, bg=COLORS["app_bg"])
+        grid_frame = tk.Frame(self.list_frame, bg=COLORS["surface"])
         grid_frame.pack(fill="both", expand=True)
+        self.table_cards = {}
 
         for index, table in enumerate(tables):
-            name = table[1]
-            status = table[2]
-            is_empty = status == "Trống"
-            color = "#e8f5ed" if is_empty else "#fff0e8"
-            fg = COLORS["success"] if is_empty else COLORS["danger"]
-            icon = "✅" if is_empty else "☕"
+            card = TableCard(grid_frame, table, self.select_table)
+            card.grid(row=index // 4, column=index % 4, padx=9, pady=9, sticky="nsew")
+            card.configure(width=220, height=118)
+            card.grid_propagate(False)
+            self.table_cards[table[0]] = card
 
-            btn = tk.Button(
-                grid_frame,
-                text=f"{icon}  {name}\n{status}",
-                bg=color,
-                fg=fg,
-                activebackground=COLORS["border"],
-                activeforeground=fg,
-                relief="flat",
-                bd=0,
-                highlightthickness=1,
-                highlightbackground=COLORS["border"],
-                width=18,
-                height=4,
-                font=(FONT_FAMILY, 11, "bold"),
-                cursor="hand2",
-                command=lambda data=table: self.select_table(data),
-            )
-
-            btn.grid(row=index // 4, column=index % 4, padx=10, pady=10, sticky="nsew")
+        for col in range(4):
+            grid_frame.grid_columnconfigure(col, weight=1, uniform="tables")
 
     def select_table(self, table):
         table_id, name, status = table
@@ -172,6 +244,9 @@ class TableView:
         if self.role == "Staff":
             self.name_entry.config(state="disabled")
         self.status_var.set(status or "Trống")
+        for table_id, card in self.table_cards.items():
+            card.set_selected(table_id == self.selected_table_id)
+            card.set_occupied(card.table_data[2] == "Đang dùng")
 
     def add_table(self):
         name = self.name_entry.get().strip()
