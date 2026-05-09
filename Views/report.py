@@ -1,7 +1,10 @@
+import os
+import threading
 import tkinter as tk
-from tkinter import ttk
 from datetime import datetime
+from tkinter import filedialog, messagebox, ttk
 
+from Controllers.excel_export import ExcelExportService
 from Controllers.report import ReportService
 from Views.theme import COLORS, FONT_FAMILY, button
 
@@ -10,6 +13,7 @@ class ReportView:
     def __init__(self, parent):
         self.parent = parent
         self.service = ReportService()
+        self.excel_service = ExcelExportService()
         self.frame = tk.Frame(parent, bg=COLORS["app_bg"])
         self.frame.pack(fill="both", expand=True)
 
@@ -47,29 +51,62 @@ class ReportView:
         self.chart.pack(fill="x", pady=(10, 6))
         self.chart.bind("<Configure>", lambda _e: self.LoadRevenueChart())
 
-        invoice_wrap = tk.Frame(self.frame, bg=COLORS["surface"], padx=16, pady=12, highlightthickness=1, highlightbackground=COLORS["border"])
-        invoice_wrap.pack(fill="both", expand=True, padx=24, pady=(0, 20))
-        tk.Label(invoice_wrap, text="Danh sách hóa đơn", bg=COLORS["surface"], fg=COLORS["text"], font=(FONT_FAMILY, 12, "bold")).pack(anchor="w")
+        self._build_export_card()
 
-        cols = ("id", "table", "time", "total", "staff")
-        self.invoice_table = ttk.Treeview(invoice_wrap, columns=cols, show="headings", height=8)
-        self.invoice_table.heading("id", text="Mã hóa đơn")
-        self.invoice_table.heading("table", text="Bàn")
-        self.invoice_table.heading("time", text="Thời gian")
-        self.invoice_table.heading("total", text="Tổng tiền")
-        self.invoice_table.heading("staff", text="Nhân viên")
-        self.invoice_table.column("id", width=120, anchor="center")
-        self.invoice_table.column("table", width=120, anchor="center")
-        self.invoice_table.column("time", width=240)
-        self.invoice_table.column("total", width=140, anchor="e")
-        self.invoice_table.column("staff", width=170)
-        self.invoice_table.pack(fill="both", expand=True, pady=(8, 0))
-        self.invoice_table.tag_configure("even", background="#FFF9F4")
+    def _build_export_card(self):
+        shadow = tk.Frame(self.frame, bg="#D9C7B7")
+        shadow.pack(fill="x", padx=28, pady=(0, 20))
+
+        export_wrap = tk.Frame(shadow, bg=COLORS["surface"], padx=16, pady=14, highlightthickness=1, highlightbackground=COLORS["border"])
+        export_wrap.pack(fill="x", padx=(0, 2), pady=(0, 2))
+
+        tk.Label(export_wrap, text="📁 Xuất báo cáo Excel", bg=COLORS["surface"], fg=COLORS["text"], font=(FONT_FAMILY, 12, "bold")).grid(row=0, column=0, columnspan=7, sticky="w")
+        tk.Label(export_wrap, text="📊", bg=COLORS["surface"], fg="#1D6F42", font=(FONT_FAMILY, 22, "bold")).grid(row=1, column=0, padx=(0, 8), pady=(10, 0))
+        tk.Label(export_wrap, text="Tháng", bg=COLORS["surface"], fg=COLORS["muted"]).grid(row=1, column=1, sticky="w", pady=(10, 0))
+        self.export_month_combo = ttk.Combobox(export_wrap, textvariable=self.month_var, values=[f"{m:02d}" for m in range(1, 13)], width=8, state="readonly")
+        self.export_month_combo.grid(row=1, column=2, padx=(6, 14), pady=(10, 0))
+        tk.Label(export_wrap, text="Năm", bg=COLORS["surface"], fg=COLORS["muted"]).grid(row=1, column=3, sticky="w", pady=(10, 0))
+        self.export_year_combo = ttk.Combobox(export_wrap, textvariable=self.year_var, values=[str(y) for y in range(datetime.now().year - 5, datetime.now().year + 1)], width=8, state="readonly")
+        self.export_year_combo.grid(row=1, column=4, padx=(6, 14), pady=(10, 0))
+        self.export_btn = button(export_wrap, text="Xuất Excel", command=self.export_monthly_report)
+        self.export_btn.grid(row=1, column=5, padx=(8, 0), pady=(10, 0))
+        export_wrap.grid_columnconfigure(6, weight=1)
 
     def load_report(self):
         self.LoadStatisticsCards()
         self.LoadRevenueChart()
-        self.LoadInvoiceTable()
+
+    def export_monthly_report(self):
+        month, year = self.month_var.get(), self.year_var.get()
+        daily_rows = self.service.get_daily_revenue_details(year, month)
+        if not daily_rows:
+            messagebox.showinfo("Không có dữ liệu", f"Không có dữ liệu doanh thu cho tháng {int(month)}/{year}.")
+            return
+
+        output_dir = filedialog.askdirectory(title="Chọn thư mục lưu báo cáo Excel")
+        if not output_dir:
+            return
+
+        self.export_btn.config(state="disabled")
+        threading.Thread(target=self._run_export, args=(month, year, output_dir), daemon=True).start()
+
+    def _run_export(self, month, year, output_dir):
+        try:
+            stats = self.service.get_statistics(year, month)
+            daily_rows = self.service.get_daily_revenue_details(year, month)
+            file_path = self.excel_service.ExportMonthlyReport(month, year, stats, daily_rows, output_dir)
+            self.frame.after(0, lambda: self._on_export_success(file_path))
+        except Exception as exc:
+            self.frame.after(0, lambda: self._on_export_error(exc))
+
+    def _on_export_success(self, file_path):
+        self.export_btn.config(state="normal")
+        if messagebox.askyesno("Xuất thành công", f"Đã xuất file:\n{file_path}\n\nBạn có muốn mở thư mục chứa file không?"):
+            os.startfile(os.path.dirname(file_path))
+
+    def _on_export_error(self, exc):
+        self.export_btn.config(state="normal")
+        messagebox.showerror("Lỗi xuất Excel", f"Không thể xuất báo cáo: {exc}")
 
     def LoadStatisticsCards(self):
         for w in self.cards_frame.winfo_children():
@@ -114,11 +151,3 @@ class ReportView:
             x, y = points[idx * 2], points[idx * 2 + 1]
             self.chart.create_oval(x - 3, y - 3, x + 3, y + 3, fill=COLORS["primary_dark"], outline="")
             self.chart.create_text(x, y - 12, text=f"{value:,.0f}", fill=COLORS["primary_dark"], font=(FONT_FAMILY, 8, "bold"))
-
-    def LoadInvoiceTable(self):
-        for row in self.invoice_table.get_children():
-            self.invoice_table.delete(row)
-        month = self.month_var.get() if self.mode_var.get() == "month" else None
-        for idx, row in enumerate(self.service.get_invoices(self.year_var.get(), month)):
-            tags = ("even",) if idx % 2 == 0 else ()
-            self.invoice_table.insert("", "end", values=(row[0], row[1], row[2], f"{row[3]:,.0f}đ", row[4]), tags=tags)

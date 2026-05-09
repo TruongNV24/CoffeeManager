@@ -104,3 +104,34 @@ class ReportService:
         rows = cursor.fetchall()
         conn.close()
         return rows
+
+
+    def get_daily_revenue_details(self, year, month):
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT
+                date(o.OrderDate) AS report_day,
+                COUNT(DISTINCT o.OrderID) AS invoice_count,
+                COALESCE(SUM(od.Quantity), 0) AS total_items,
+                COALESCE(SUM(o.TotalAmount), 0) AS revenue
+            FROM Orders o
+            LEFT JOIN OrderDetails od ON o.OrderID = od.OrderID
+            WHERE strftime('%Y', o.OrderDate) = ? AND strftime('%m', o.OrderDate) = ?
+            GROUP BY report_day
+            ORDER BY report_day
+            """,
+            (str(year), f"{int(month):02d}"),
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return [
+            {
+                "date": row[0],
+                "invoice_count": row[1] or 0,
+                "total_items": row[2] or 0,
+                "revenue": row[3] or 0,
+            }
+            for row in rows
+        ]
