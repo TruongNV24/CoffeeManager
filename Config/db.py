@@ -1,26 +1,62 @@
+import os
 import sqlite3
+from pathlib import Path
+
 import firebase_admin
 from firebase_admin import credentials, firestore
 
 DB_NAME = "database.db"
 
+
+def _resolve_firebase_credential_path():
+    """Ưu tiên biến môi trường, sau đó thử các vị trí phổ biến trong project."""
+    env_path = os.getenv("FIREBASE_CREDENTIALS")
+    if env_path:
+        path = Path(env_path).expanduser().resolve()
+        if path.exists():
+            return path
+
+    project_root = Path(__file__).resolve().parent.parent
+    candidates = [
+        project_root / "serviceAccountKey.json",
+        project_root / "Config" / "serviceAccountKey.json",
+    ]
+
+    for path in candidates:
+        if path.exists():
+            return path
+
+    return None
+
+
 def init_firebase():
     try:
         if not firebase_admin._apps:
-            cred = credentials.Certificate("serviceAccountKey.json")
+            cred_path = _resolve_firebase_credential_path()
+            if not cred_path:
+                print(
+                    "Không thể kết nối Firebase: không tìm thấy file credentials. "
+                    "Hãy đặt FIREBASE_CREDENTIALS hoặc thêm serviceAccountKey.json vào thư mục gốc project."
+                )
+                return None
+
+            cred = credentials.Certificate(str(cred_path))
             firebase_admin.initialize_app(cred)
         return firestore.client()
     except Exception as e:
         print(f"Không thể kết nối Firebase: {e}")
         return None
 
+
 # Biến toàn cục để dùng ở các file Controller
 db_cloud = init_firebase()
+
 
 def get_connection():
     conn = sqlite3.connect(DB_NAME)
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
 
 def create_tables():
     conn = get_connection()
