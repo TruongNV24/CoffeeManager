@@ -82,3 +82,27 @@ def delete_product(product_id):
         return False
     finally:
         conn.close()
+
+
+def get_active_menu_items():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT
+            p.ProductID,
+            p.ProductName,
+            p.Price,
+            p.Status,
+            p.ProductImage,
+            p.CategoryID,
+            c.CategoryName
+        FROM Products p
+        LEFT JOIN Categories c ON c.CategoryID = p.CategoryID
+        WHERE p.Status = 'Còn bán'
+        ORDER BY p.ProductID DESC
+        """
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return rows

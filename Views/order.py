@@ -6,6 +6,7 @@ from tkinter import filedialog, messagebox
 
 from Config.db import get_connection
 from Config.image_config import CARD_IMAGE_SIZE, PREVIEW_IMAGE_SIZE
+from Controllers.menu import MenuController
 from Controllers.order import OrderController
 from Utils.image_handler import ImageHandler
 from Views.theme import COLORS, FONT_FAMILY, button, entry
@@ -131,7 +132,7 @@ class ProductCardItem:
     def UpdateVisualState(self):
         if self.IsSelected:
             bg_color = "#fff0d9"
-            border_color = COLORS["accent"]
+            border_color = COLORS["primary"]
         elif self.is_hovered:
             bg_color = "#f8fafc"
             border_color = "#93c5fd"
@@ -158,15 +159,21 @@ class OrderView:
         self.parent = parent
         self.role = role
         self.controller = OrderController()
+        self.menu_controller = MenuController()
         self.selected_product_id = None
         self.current_order_id = None
         self.current_image_preview = None
         self.product_cards = {}
+        self.filtered_items = []
         self.current_order_details = []
         self.product_image_labels = {}
         self.selected_card_item = None
         self.hovered_product_id = None
         self.categories = []
+        self.current_category = "Tất cả"
+        self.search_keyword = ""
+        self.search_debounce_id = None
+        self.category_buttons = {}
         self.category_placeholder = "Chưa chọn loại"
         self.table_label_map = {}
         self.last_added_product_id = None
@@ -231,6 +238,24 @@ class OrderView:
         )
         if self.role == "Admin":
             self.toggle_product_form_button.pack(side="right")
+
+        filter_wrap = tk.Frame(left, bg=COLORS["surface"])
+        filter_wrap.pack(fill="x", padx=10, pady=(0, 8))
+
+        search_row = tk.Frame(filter_wrap, bg=COLORS["surface"])
+        search_row.pack(fill="x", pady=(0, 8))
+        tk.Label(search_row, text="🔍", bg=COLORS["surface"], fg=COLORS["muted"], font=(FONT_FAMILY, 11)).pack(side="left", padx=(8, 4))
+        self.search_var = tk.StringVar()
+        self.search_var.trace_add("write", self.on_search_changed)
+        self.search_entry = entry(search_row, textvariable=self.search_var, width=40)
+        self.search_entry.pack(side="left", fill="x", expand=True, ipady=5)
+        self.search_entry.insert(0, "Tìm món...")
+        self.search_entry.configure(fg="#9ca3af")
+        self.search_entry.bind("<FocusIn>", self._on_search_focus_in)
+        self.search_entry.bind("<FocusOut>", self._on_search_focus_out)
+
+        self.category_frame = tk.Frame(filter_wrap, bg=COLORS["surface"])
+        self.category_frame.pack(fill="x")
 
         grid_wrap = tk.Frame(left, bg=COLORS["surface"])
         grid_wrap.pack(fill="both", expand=True, padx=10, pady=(0, 10))
@@ -357,8 +382,8 @@ class OrderView:
 
     def load_products(self):
         self.products = self.controller.get_products()
-        self.image_handler.clear_group("cards")
-        self.render_product_cards()
+        self.refresh_category_filters()
+        self.filter_menu_items()
 
     def on_select_product(self, _event=None):
         if self.selected_product_id is None:
@@ -383,6 +408,68 @@ class OrderView:
     def _on_product_canvas_resize(self, event):
         self.product_canvas.itemconfig(self.product_canvas_window, width=event.width)
 
+    def _on_search_focus_in(self, _event):
+        if self.search_entry.get() == "Tìm món...":
+            self.search_entry.delete(0, tk.END)
+            self.search_entry.configure(fg=COLORS["text"])
+
+    def _on_search_focus_out(self, _event):
+        if not self.search_entry.get().strip():
+            self.search_entry.delete(0, tk.END)
+            self.search_entry.insert(0, "Tìm món...")
+            self.search_entry.configure(fg="#9ca3af")
+
+    def refresh_category_filters(self):
+        for widget in self.category_frame.winfo_children():
+            widget.destroy()
+        category_names = sorted({(item[6] or "Other") for item in self.products}, key=str.lower)
+        categories = ["Tất cả", *category_names]
+        self.category_buttons = {}
+        for category in categories:
+            btn = button(
+                self.category_frame,
+                text=category,
+                variant="ghost",
+                command=lambda c=category: self.on_category_changed(c),
+            )
+            btn.pack(side="left", padx=(0, 6))
+            self.category_buttons[category] = btn
+        self._highlight_selected_category()
+
+    def _highlight_selected_category(self):
+        for category, btn in self.category_buttons.items():
+            if category == self.current_category:
+                btn.configure(bg=COLORS["primary"], fg=COLORS["white"])
+            else:
+                btn.configure(bg=COLORS["surface"], fg=COLORS["text"])
+
+    def on_search_changed(self, *_args):
+        if self.search_debounce_id:
+            self.frame.after_cancel(self.search_debounce_id)
+        self.search_debounce_id = self.frame.after(180, self.filter_menu_items)
+
+    def on_category_changed(self, category):
+        self.current_category = category
+        self.filter_menu_items()
+
+    def filter_menu_items(self):
+        raw_text = self.search_var.get().strip()
+        self.search_keyword = "" if raw_text == "Tìm món..." else raw_text
+        self.menu_controller.current_category = self.current_category
+        self.menu_controller.search_keyword = self.search_keyword
+        self.filtered_items = self.menu_controller.service.filter_items(
+            self.products,
+            current_category=self.current_category,
+            search_keyword=self.search_keyword,
+        )
+        # Flow xử lý: search/category -> filter -> refresh UI -> update selected state.
+        self.refresh_menu_grid()
+
+    def refresh_menu_grid(self):
+        self._highlight_selected_category()
+        self.image_handler.clear_group("cards")
+        self.render_product_cards()
+
     def render_product_cards(self):
         for widget in self.product_grid.winfo_children():
             widget.destroy()
@@ -394,7 +481,17 @@ class OrderView:
         for col in range(columns):
             self.product_grid.grid_columnconfigure(col, weight=1, uniform="product_cards")
 
-        for idx, product in enumerate(self.products):
+        if not self.filtered_items:
+            empty = tk.Label(
+                self.product_grid,
+                text="Không tìm thấy món phù hợp",
+                bg=COLORS["surface"],
+                fg=COLORS["muted"],
+                font=(FONT_FAMILY, 12, "bold"),
+            )
+            empty.grid(row=0, column=0, columnspan=columns, pady=32)
+
+        for idx, product in enumerate(self.filtered_items):
             row = idx // columns
             column = idx % columns
             image = self.image_handler.get_image(product[4], CARD_IMAGE_SIZE, cache_group="cards")
