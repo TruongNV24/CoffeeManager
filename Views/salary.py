@@ -10,6 +10,7 @@ class SalaryView:
     def __init__(self, parent):
         self.parent = parent
         self.selected_position_id = None
+        self.selected_salary_id = None
 
         self.frame = tk.Frame(parent, bg=COLORS["app_bg"])
         self.frame.pack(fill="both", expand=True)
@@ -88,7 +89,10 @@ class SalaryView:
         tk.Entry(form, textvariable=self.salary_month, width=14).grid(row=1, column=1, padx=(12, 0), pady=4)
         tk.Entry(form, textvariable=self.salary_work_days, width=12).grid(row=1, column=2, padx=(12, 0), pady=4)
         tk.Entry(form, textvariable=self.salary_bonus, width=14).grid(row=1, column=3, padx=(12, 0), pady=4)
-        tk.Button(form, text="Lưu bảng lương", bg=COLORS["success"], fg="white", command=self._save_salary).grid(row=1, column=4, padx=16)
+        action = tk.Frame(form, bg=COLORS["surface"])
+        action.grid(row=1, column=4, padx=16)
+        tk.Button(action, text="Lưu bảng lương", bg=COLORS["success"], fg="white", command=self._save_salary).pack(side="left", padx=3)
+        tk.Button(action, text="Xóa lương", bg=COLORS["danger"], fg="white", command=self._delete_salary).pack(side="left", padx=3)
 
         self.salary_tree = ttk.Treeview(
             tab,
@@ -109,6 +113,7 @@ class SalaryView:
             self.salary_tree.heading(col, text=text)
             self.salary_tree.column(col, width=width)
         self.salary_tree.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+        self.salary_tree.bind("<<TreeviewSelect>>", self._on_salary_select)
 
     def _load_positions(self):
         for item in self.position_tree.get_children():
@@ -155,6 +160,26 @@ class SalaryView:
 
         for row in rows:
             self.salary_tree.insert("", "end", values=row)
+
+
+    def _on_salary_select(self, _event):
+        selected = self.salary_tree.selection()
+        if not selected:
+            return
+
+        values = self.salary_tree.item(selected[0], "values")
+        self.selected_salary_id = int(values[0])
+        employee_name = values[1]
+        month = values[3]
+        work_days = values[5]
+        bonus = values[6]
+
+        employee_key = next((key for key in self.employee_map if f" - {employee_name} (" in key), None)
+        if employee_key:
+            self.salary_employee.set(employee_key)
+        self.salary_month.set(str(month))
+        self.salary_work_days.set(str(work_days))
+        self.salary_bonus.set(str(bonus))
 
     def _on_position_select(self, _event):
         selected = self.position_tree.selection()
@@ -205,6 +230,27 @@ class SalaryView:
         conn.commit()
         conn.close()
         self._load_positions()
+
+
+    def _delete_salary(self):
+        if not self.selected_salary_id:
+            messagebox.showwarning("Chưa chọn", "Vui lòng chọn bảng lương để xóa")
+            return
+
+        if not messagebox.askyesno("Xác nhận", "Bạn có chắc muốn xóa bảng lương đã chọn?"):
+            return
+
+        conn = get_connection()
+        conn.execute("DELETE FROM Salaries WHERE SalaryID = ?", (self.selected_salary_id,))
+        conn.commit()
+        conn.close()
+
+        self.selected_salary_id = None
+        self.salary_month.set("")
+        self.salary_work_days.set("26")
+        self.salary_bonus.set("0")
+        self._load_salaries()
+        messagebox.showinfo("Thành công", "Đã xóa bảng lương")
 
     def _save_salary(self):
         employee_key = self.salary_employee.get().strip()
@@ -277,5 +323,6 @@ class SalaryView:
             if conn:
                 conn.close()
 
+        self.selected_salary_id = None
         self._load_salaries()
         messagebox.showinfo("Thành công", "Đã lưu bảng lương")
